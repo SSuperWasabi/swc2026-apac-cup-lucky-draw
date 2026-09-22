@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head><script>for(const key of ["config.v1","stock.v1","log.v1","cooldown.v1","draw-state.v1"]){const value=localStorage.getItem('figure-draw.'+key);if(value!==null)localStorage.setItem("figure-review-v9."+key,value);else localStorage.removeItem("figure-review-v9."+key);}</script><base href="../../">
+<head><script>for(const key of ["config.v1","stock.v1","log.v1","cooldown.v1","draw-state.v1"]){const value=localStorage.getItem('swc2026-apac-lucky-draw.'+key);if(value!==null)localStorage.setItem("swc2026-apac-review-v9."+key,value);else localStorage.removeItem("swc2026-apac-review-v9."+key);}</script><base href="../../">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -534,8 +534,8 @@
 
 <script>
 /* ════════════════ 저장소 키 ════════════════ */
-const K_CFG='figure-review-v9.config.v1', K_STOCK='figure-review-v9.stock.v1', K_LOG='figure-review-v9.log.v1', K_COOL='figure-review-v9.cooldown.v1';
-const K_STATE='figure-review-v9.draw-state.v1';
+const K_CFG='swc2026-apac-review-v9.config.v1', K_STOCK='swc2026-apac-review-v9.stock.v1', K_LOG='swc2026-apac-review-v9.log.v1', K_COOL='swc2026-apac-review-v9.cooldown.v1';
+const K_STATE='swc2026-apac-review-v9.draw-state.v1';
 const APP_VER='figure-v9';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
@@ -614,7 +614,7 @@ function startCooldown(ip,p){ if(!p || p.tier!=='high' || !cooldownMs(p)) return
 
 /* ════════════════ IndexedDB 이미지/미디어 저장 ════════════════ */
 let idb=null;
-function openIDB(){ return new Promise((res)=>{ const rq=indexedDB.open('figure-draw-media',1);
+function openIDB(){ return new Promise((res)=>{ const rq=indexedDB.open('swc2026-apac-lucky-draw-media',1);
   rq.onupgradeneeded=()=>{ rq.result.createObjectStore('media'); };
   rq.onsuccess=()=>{ idb=rq.result; res(idb); }; rq.onerror=()=>res(null); }); }
 function idbPut(key,val){ return new Promise((res)=>{ try{ if(!idb)return res(false); const tx=idb.transaction('media','readonly'); tx.objectStore('media').put(val,key); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); tx.onabort=()=>res(false); }catch(e){ res(false); } }); }
@@ -1537,7 +1537,7 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
         if(regs.some(r=>r.scope===new URL('./',location.href).href)){
           const scope=new URL('./',location.href).href;
           await Promise.all(regs.filter(r=>r.scope===scope).map(r=>r.unregister()));
-          if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.filter(k=>k.startsWith('figure-draw-')).map(k=>caches.delete(k))); }
+          if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.filter(k=>k.startsWith('swc2026-apac-lucky-draw-')).map(k=>caches.delete(k))); }
           location.reload(); return;
         }
       }catch(e){}

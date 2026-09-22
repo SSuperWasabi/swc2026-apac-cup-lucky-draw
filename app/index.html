@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SWC APAC Draw">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#160A33">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<title>제라투 피규어 드로우</title>
+<title>SWC2026 APAC Cup Lucky Draw</title>
 
 <style>
   /* ════════ Com2uS Lucky Draw 디자인 시스템 토큰 (퍼플+골드) ════════ */
@@ -540,22 +541,22 @@
 <script src="idle-video.js"></script>
 <script>
 /* ════════════════ 저장소 키 ════════════════ */
-const K_CFG='figure-draw.config.v1', K_STOCK='figure-draw.stock.v1', K_LOG='figure-draw.log.v1', K_COOL='figure-draw.cooldown.v1';
-const K_STATE='figure-draw.draw-state.v1';
-const APP_VER='figure-v32';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
+const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
+const APP_VER='swc-apac-v1';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
   return {
-    eventName:'제라투 피규어 드로우', figureProbabilityEnabled:false, figureWinPercent:10, bgmMode:'screen', bgmSingleSlot:'idle', adminPin:'0000', idleTimeoutSec:30, muted:false, npcs:[], idleVideos:[], cooldownMin:15,
+    eventName:'SWC2026 APAC Cup Lucky Draw', figureProbabilityEnabled:false, figureWinPercent:10, bgmMode:'screen', bgmSingleSlot:'idle', adminPin:'0000', idleTimeoutSec:30, muted:false, npcs:[], idleVideos:[], cooldownMin:15,
     showLineup:true,   // S3 경품 라인업 표시 (false = S1/S2 → 뽑기 직행)
     drawIdleSec:5,     // S4 뽑기 전 무입력 복귀(초, 0=끔) — 뽑기 확정 후에는 미적용
     ips:[{
-      id:'ip1', name:'제라투 소환 이벤트', heroImageKey:null,
+      id:'ip1', name:'SWC2026 APAC Cup', heroImageKey:null,
       lastOne:{name:'',imageKey:null},
       prizes:[
-        {grade:'피규어',name:'제라투 피규어',imageKey:null,count:0,tier:'high',kind:'figure'},
-        {grade:'참가상',name:'참가상',imageKey:null,count:0,tier:'normal',kind:'participation'},
+        {grade:'피규어',name:'당첨 경품 (설정 필요)',imageKey:null,count:0,tier:'high',kind:'figure'},
+        {grade:'참가상',name:'참가상 (설정 필요)',imageKey:null,count:0,tier:'normal',kind:'participation'},
       ],
     }],
   };
@@ -620,7 +621,7 @@ function startCooldown(ip,p){ if(!p || p.tier!=='high' || !cooldownMs(p)) return
 
 /* ════════════════ IndexedDB 이미지/미디어 저장 ════════════════ */
 let idb=null;
-function openIDB(){ return new Promise((res)=>{ const rq=indexedDB.open('figure-draw-media',1);
+function openIDB(){ return new Promise((res)=>{ const rq=indexedDB.open('swc2026-apac-lucky-draw-media',1);
   rq.onupgradeneeded=()=>{ rq.result.createObjectStore('media'); };
   rq.onsuccess=()=>{ idb=rq.result; res(idb); }; rq.onerror=()=>res(null); }); }
 function idbPut(key,val){ return new Promise((res)=>{ try{ if(!idb)return res(false); const tx=idb.transaction('media','readwrite'); tx.objectStore('media').put(val,key); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); tx.onabort=()=>res(false); }catch(e){ res(false); } }); }
@@ -1580,7 +1581,7 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
         if(regs.some(r=>r.scope===new URL('./',location.href).href)){
           const scope=new URL('./',location.href).href;
           await Promise.all(regs.filter(r=>r.scope===scope).map(r=>r.unregister()));
-          if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.filter(k=>k.startsWith('figure-draw-')).map(k=>caches.delete(k))); }
+          if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.filter(k=>k.startsWith('swc2026-apac-lucky-draw-')).map(k=>caches.delete(k))); }
           location.reload(); return;
         }
       }catch(e){}

@@ -81,7 +81,11 @@ const server=http.createServer((req,res)=>{
   // Win/no-video and multiple-participation-video fallback keep their original renderer.
   await page.evaluate(()=>{const p=cfg.ips[0].prizes[0];lastResult={ip:cfg.ips[0],prize:p,media:p,high:true,wonName:p.name,serial:20};showResult();startResultMedia();});
   assert.equal(await page.evaluate(()=>resultLoop.visible),false);
+  assert.equal(await page.locator('#rc-img [aria-label="경품 이미지 미등록"]').count(),1);
+  assert.equal(await page.locator('#rc-img img').count(),0,'missing prize image must not imply a Zeratu prize');
+  await page.evaluate(()=>{const p=cfg.ips[0].prizes[0];imgCache['probe-win']='assets/figure/scroll.webp';lastResult={ip:cfg.ips[0],prize:{...p,imageKey:'probe-win'},media:p,high:true,wonName:'Prize A',serial:20};showResult();startResultMedia();});
   assert.equal(await page.locator('#rc-img img').count(),1);
+  assert.equal(await page.locator('#rc-img img').getAttribute('src'),'assets/figure/scroll.webp');
   await page.evaluate(()=>{resetToIdle();cfg.ips[0].prizes.push({name:'second',kind:'participation',videoKey:'probe-popup'});scheduleResultLoop();});
   assert.equal(await page.evaluate(()=>participationVideoKey()),null);
   assert.equal(await page.evaluate(()=>resultLoop.entry),null);

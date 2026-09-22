@@ -323,12 +323,12 @@ function completeScrollDrag(){
 renderResult = function(){
   resultLoop.hide();
   figureBase.renderResult();
-  document.querySelector('#scr-result h2').textContent=lastResult.high?'제라투 소환 성공!':'아쉽네요!';
-  document.getElementById('rc-grade').textContent=lastResult.high?'피규어 당첨':'';
+  document.querySelector('#scr-result h2').textContent=lastResult.high?'경품 당첨!':'아쉽네요!';
+  document.getElementById('rc-grade').textContent=lastResult.high?(lastResult.prize.grade||'당첨상'):'';
   document.getElementById('rc-grade').hidden=!lastResult.high;
   document.getElementById('scr-result').classList.toggle('participation-result',!lastResult.high);
   if(!lastResult.high)document.getElementById('rc-name').textContent='아쉽게도 당첨을 놓쳤어요!\n다음 기회를 노려보아요!';
-  if(!lastResult.wonImageKey&&lastResult.high){document.getElementById('rc-img').innerHTML='<img src="assets/figure/zeratu.webp" alt="제라투 피규어">';}
+  if(!(lastResult.wonImageKey||lastResult.prize.imageKey)&&lastResult.high){document.getElementById('rc-img').innerHTML='<span role="img" aria-label="경품 이미지 미등록">🎁</span>';}
   clearInterval(resultTick);resultTick=setInterval(updateResultCountdown,200);
   const key=reusableResultKey(lastResult);if(key)resultLoop.show(key);
 }

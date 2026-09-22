@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $rootPrefix = $projectRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-$archiveName = 'Figure-draw-app-v28-share.zip'
+$archiveName = 'SWC2026-APAC-v1-share.zip'
 $archivePath = [IO.Path]::GetFullPath((Join-Path $projectRoot $archiveName))
 
 if (-not $archivePath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
@@ -20,6 +20,10 @@ $entries = @(
   'index.html',
   'KUJI-REFERENCE-ANALYSIS.md',
   'README.md',
+  'README-FIGURE-DRAW-v32.md',
+  'handoff.md',
+  'RESULT-VIDEO-IMPACT-REVIEW.md',
+  'writing reference',
   'resource',
   'scripts',
   'WORKLOG.md'
@@ -40,7 +44,10 @@ $tarArguments = @(
   $archivePath,
   '--exclude=.git',
   '--exclude=*/.git',
-  '--exclude=*/.git/*'
+  '--exclude=*/.git/*',
+  '--exclude=*.kuji',
+  '--exclude=*/node_modules',
+  '--exclude=*/node_modules/*'
 ) + $entries
 
 Push-Location $projectRoot

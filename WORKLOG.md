@@ -1,5 +1,20 @@
 # 작업 일지
 
+## 2026-09-23 — SWC2026 APAC Cup Lucky Draw 독립 프로젝트 시작
+
+- 사용자 승인: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`, 공개 GitHub 저장소 `SSuperWasabi/swc2026-apac-cup-lucky-draw`, Pages 배포, 앱/PWA 저장 식별자 분리. 기존 앱과 운영 백업은 보존한다.
+- 기반 Figure Draw v32의 `ac2d609`에서 Git 이력과 코드를 독립 복제했다. 기존 remote를 복제본에서 제거하고 새 origin을 연결했다. 원본 작업 폴더는 변경하지 않았다.
+- 신규 버전 `swc-apac-v1`; localStorage 접두사 `swc2026-apac-lucky-draw.`, IndexedDB `swc2026-apac-lucky-draw-media`, SW 캐시 `swc2026-apac-lucky-draw-v1`, manifest id/name/start scope 분리. 과거 진단 화면과 생성 스크립트도 원본 데이터를 참조하지 않도록 분리했다.
+- 기존 리소스 277개를 경로·파일 크기로 대조했고 대표 메인 영상 SHA-256이 동일함을 확인했다. 중첩 Git·node_modules·운영 `.kuji`는 리소스 복사에서 제외했다. OAP 파생 폴더 및 테스트 도구를 로컬에 복사하고 Git 제외를 유지했다.
+- 새 행사명, 재고 0, 기록 없음, 미디어 없음으로 시작한다. 기존 백업을 실제로 복원하거나 과거 운영 재고를 삭제하지 않았다. 다수 당첨 경품은 기존 엔진을 사용하며 상품·수량은 추후 설정한다.
+- 고정 제라투 성공 문구/미등록 상품의 제라투 이미지 fallback을 일반 경품 표시로 변경했다. 등록된 경품 이미지는 그대로 유지한다. 추첨 규칙·영상 준비·오디오 로직은 변경하지 않았다.
+- 신규 격리 검사: 원본 저장 키 보존, 새로운 DB, 빈 행사, 합성 `.kuji` v2 복원, 당첨 상품 3종+참가상 정확한 재고 소진, SW 활성화 시 타 앱 캐시 보존, 진단 화면 namespace 확인 통과.
+- 기존 검사 통과: test-figure, test-figure-dom, test-idle-video-cycle, test-scroll-audio, test-audio-mix, test-figure-sw, test-scroll-encoding 및 실제 Chrome test-figure-browser.
+- 실제 Chrome 영상 검사: 35.45MiB 메인 원본으로 12회 복귀 시 사전 준비 요소/소스 유지 및 재로드·seek·waiting 없음. 6,808,674바이트 미당첨 후보로 10회 재진입 시 IDB 읽기 1회와 동일 노드/소스, 결과 진입 시 load/seek/waiting 없음. 팝업·5초 복귀·이미지·복수 영상 fallback·삭제 중 읽기 취소 통과. 기존 제라투 기본 이미지를 기대하던 테스트는 새 일반 경품 표시와 실제 등록 이미지 검증으로 갱신 후 통과했다.
+- README를 새 프로젝트 기준으로 작성하고 기존 README는 `README-FIGURE-DRAW-v32.md`로 보존했다. `handoff.md`에 사용자 승인, 경로, 최신 AE 후보, 보존 기능, 다음 작업과 새 행사 초기화 주의를 기록했다. 테스트 의존성 lock과 설치 스크립트도 추적한다.
+- OAP 선택 v8·개봉 v3·당첨 v5 AE 원본이 파일 목록에서 새로 확인됐다. 파일명상 후보이며 아직 원본 내부 확인/추출/앱 적용은 하지 않았다. 기존 보라색 UI·아이콘·소환 연출은 임시 유지한다.
+- 새 iPad 실기 확인은 아직 하지 않았다. 기반 앱의 과거 사용자 확인과 이번 Chrome 검증을 구분한다. 배포 후 PWA 오프라인 검증은 별도 스크립트 `test-project-pwa-browser.cjs`로 수행한다.
+
 ## 2026-09-18 — v32 사용자 확인 완료 및 전체 이력·게시용 원고 정리
 
 - 사용자 피드백 원문: “좋았어. 모두 다 확인햇어.” v32 배포 후 메인/미당첨 영상 및 기존 기능 영향 점검에 대한 사용자 확인 완료로 기록한다. 확인 환경의 OS 버전·횟수·장시간 측정치는 추가로 제공되지 않아 추정하지 않는다.

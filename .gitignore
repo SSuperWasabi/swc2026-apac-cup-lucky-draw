@@ -17,6 +17,12 @@ Thumbs.db
 /Zeratu Character Sheet
 
 # 루트의 원본 미디어와 소재 폴더는 로컬 참조용 (앱용 최적화본만 app/assets/에 둔다)
+# Never publish operator backups or native AE source projects, regardless of folder.
+*.kuji
+*.aep
+*.aepx
+*.aet
+/SWC2026-APAC-*-share.zip
 /*.mp4
 /*.mp3
 /*.jpg

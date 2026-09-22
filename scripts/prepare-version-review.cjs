@@ -5,14 +5,14 @@ for(const [version,commit] of Object.entries(versions)){
  const dir=path.join('app','review',version);fs.mkdirSync(dir,{recursive:true});
  const get=name=>execFileSync('git',['show',`${commit}:app/${name}`],{maxBuffer:8*1024*1024});
  for(const name of ['figure.js','figure.css','draw-engine.js','scroll-audio.js']){let data=get(name);if(name.endsWith('.css'))data=data.toString().replaceAll("url('assets/","url('../../assets/");fs.writeFileSync(path.join(dir,name),data);}
- let html=get('index.html').toString();
+ let html=get('index.html').toString().replaceAll('figure-draw','swc2026-apac-lucky-draw');
  html=html.replace('<head>','<head><base href="../../">');
  for(const name of ['figure.js','figure.css','draw-engine.js','scroll-audio.js'])html=html.replaceAll(`"${name}"`,`"review/${version}/${name}"`);
  // Copy settings/stock into a separate namespace. Media is shared read-only, so uploaded idle video/BGM stay identical.
- const prefix=`figure-review-${version}.`;
+ const prefix=`swc2026-apac-review-${version}.`;
  const keys=['config.v1','stock.v1','log.v1','cooldown.v1','draw-state.v1'];
- const init=`<script>for(const key of ${JSON.stringify(keys)}){const value=localStorage.getItem('figure-draw.'+key);if(value!==null)localStorage.setItem(${JSON.stringify(prefix)}+key,value);else localStorage.removeItem(${JSON.stringify(prefix)}+key);}</script>`;
- html=html.replaceAll('figure-draw.',prefix);
+ const init=`<script>for(const key of ${JSON.stringify(keys)}){const value=localStorage.getItem('swc2026-apac-lucky-draw.'+key);if(value!==null)localStorage.setItem(${JSON.stringify(prefix)}+key,value);else localStorage.removeItem(${JSON.stringify(prefix)}+key);}</script>`;
+ html=html.replaceAll('swc2026-apac-lucky-draw.',prefix);
  html=html.replace('<head>','<head>'+init);
  // Prevent snapshots from registering/unregistering service workers or modifying shared media.
  html=html.replace("if('serviceWorker' in navigator){","if(false){");

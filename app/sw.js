@@ -1,7 +1,7 @@
-/* 컴투스 팝업 쿠지 — Service Worker
+/* SWC2026 APAC Cup Lucky Draw — Service Worker
    앱 자산을 사전 캐싱해 오프라인에서도 동작하게 한다.
    ※ 앱을 수정·재배포할 때는 CACHE 버전을 올려야 태블릿이 새 버전을 받는다. */
-const CACHE = 'figure-draw-v32';
+const CACHE = 'swc2026-apac-lucky-draw-v1';
 const ASSETS = [
   './idle-video.js',
   './result-video.js',
@@ -59,7 +59,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('figure-draw-') && k !== CACHE).map(k => caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('swc2026-apac-lucky-draw-') && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

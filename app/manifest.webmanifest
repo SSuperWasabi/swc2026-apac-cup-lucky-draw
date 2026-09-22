@@ -1,7 +1,8 @@
 {
-  "name": "제라투 피규어 드로우",
-  "short_name": "피규어 드로우",
-  "description": "사내 피규어 소환 이벤트",
+  "id": "./swc2026-apac-lucky-draw",
+  "name": "SWC2026 APAC Cup Lucky Draw",
+  "short_name": "SWC APAC Draw",
+  "description": "SWC2026 APAC Cup 경품 추첨 이벤트",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",
