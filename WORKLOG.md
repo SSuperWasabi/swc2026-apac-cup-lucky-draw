@@ -2,6 +2,8 @@
 
 ## 2026-09-23 — SWC2026 APAC Cup Lucky Draw 독립 프로젝트 시작
 
+- 배포 후 확인: 초기 구현 커밋 `7edb0db`, GitHub Pages 실행 `35767757993` 성공. 실제 HTTPS 앱에서 격리 Chrome으로 PWA manifest/controller/cache, 새 행사 재고 0·로그 없음, 기존 앱 저장 키 sentinel 보존, 오프라인 새로고침 및 영상 Range 206/1024바이트 응답을 확인했다. 운영 iPad의 데이터는 사용하지 않았다.
+
 - 사용자 승인: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`, 공개 GitHub 저장소 `SSuperWasabi/swc2026-apac-cup-lucky-draw`, Pages 배포, 앱/PWA 저장 식별자 분리. 기존 앱과 운영 백업은 보존한다.
 - 기반 Figure Draw v32의 `ac2d609`에서 Git 이력과 코드를 독립 복제했다. 기존 remote를 복제본에서 제거하고 새 origin을 연결했다. 원본 작업 폴더는 변경하지 않았다.
 - 신규 버전 `swc-apac-v1`; localStorage 접두사 `swc2026-apac-lucky-draw.`, IndexedDB `swc2026-apac-lucky-draw-media`, SW 캐시 `swc2026-apac-lucky-draw-v1`, manifest id/name/start scope 분리. 과거 진단 화면과 생성 스크립트도 원본 데이터를 참조하지 않도록 분리했다.

@@ -13,7 +13,7 @@ if(!target||new URL(target).protocol!=='https:')throw Error('Pass the deployed H
   });
   const page=await context.newPage();
   await page.goto(target,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>navigator.serviceWorker.controller&&typeof APP_VER!=='undefined'&&typeof idb!=='undefined'&&idb,{timeout:90000});
+  await page.waitForFunction(()=>navigator.serviceWorker.controller&&typeof APP_VER!=='undefined'&&typeof idb!=='undefined'&&idb,null,{timeout:90000});
   const state=await page.evaluate(async()=>({
    version:APP_VER,eventName:cfg.eventName,stock,logs:logArr.length,db:idb.name,
    manifest:await(await fetch('manifest.webmanifest')).json(),caches:await caches.keys(),
