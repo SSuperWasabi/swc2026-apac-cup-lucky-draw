@@ -1,5 +1,17 @@
 # 작업 일지
 
+## 2026-09-27 — AE 자동 추출, 선택 화면 v8 적용 (swc-apac-v2)
+
+- 사용자 결정: 방콕 현장 운영을 고려해 변수·부하가 적은 구성을 우선한다. 당첨 화면은 상품별 AE 사전 렌더링, 상품 확정 전까지 제라투 v5 사용. 전환 세로판은 사용자가 집 데스크탑에서 `swc2026_oap.aep` "transition"으로 작업.
+- AE 26.5를 `AfterFX.com -r` ExtendScript로 제어(화면 조작 없음). 원본 폴더 전체를 `resource/oap/ae-work/`로 복사해 662개 파일 경로·크기·시각 일치 확인. 원본 AEP는 수정하지 않았다.
+- 선택 v8·오픈 v3·당첨 v5 사본의 외부 참조(기존 Figure Draw 폴더 `SWC2026_Scroll_nobg.png`)를 새 복사본으로 교체·저장하고 재추출로 경로 외 동일함을 확인. 교체 전 사본 백업 보관.
+- 추출: v8 등장은 모두 선형 0.45초, 카드 0.38초부터 0.055초 간격·40 master px 상승, 1.435초 종료. v3는 프레임 루프+소환서 영상 분리 구조. v5는 상품 PNG·상품명 교체 자리가 있으나 상품 위로 움직이는 레이어가 있어 사전 렌더링으로 결정. `01_Transition`은 1920×1080 알파 PNG 시퀀스 사용, 세로판 원본은 이 PC에 없음.
+- v8 에셋: 카드·버튼을 끈 원본 컴포지션을 알파 TIFF 180장으로 렌더(한국어판 AE에 PNG 시퀀스 템플릿 없음) → 1024×1366 H.264 High 4.1 intro 2초/loop 4초. 카드·버튼 프리컴포지션 PNG는 무손실 WebP. 배경+요소 합성이 AE 원본과 요소 외 영역 완전 일치, 요소는 가장자리 반올림 차이만 있음.
+- 명세 `docs/oap-spec/choose-v8/`(layout.json, motion.json, README)를 추출본에서 스크립트로 생성. 재사용 AE 스크립트는 `scripts/ae/`.
+- 앱: `choose-screen.js` 신규. intro 첫 표시 프레임에서 등장 CSS 시작, intro 마지막 프레임 유지 후 loop 전환, 입력 1.435초부터, 이탈 시 정지·되감기. 위치는 원본 픽셀 비율 calc(반올림 %가 Chrome에서 1 기기픽셀 어긋남). 기존 보라색 선택 화면 CSS 제거. 선택 카드 외곽선·뒤로 버튼·미선택 SELECT 안내는 AE에 없는 임시안.
+- 검증: 기존 9종과 신규 `test-choose-browser.cjs`(동기화, 요소 위치 0.05% 이내, DPR 2 캡처 요소별 PSNR 최저 31.95dB, 선택·재진입·정지) 통과. 테스트 버전 기대값은 소스에서 읽도록 변경. `test-result-video-browser.cjs` 팝업 단계 실패는 변경 전 `72204cf`에서도 동일하게 재현되어 기존 문제로 기록, 원인 미조사.
+- 앱/캐시 `swc-apac-v2` / `swc2026-apac-lucky-draw-v2`. iPad 실기 확인은 아직이다.
+
 ## 2026-09-23 — SWC2026 APAC Cup Lucky Draw 독립 프로젝트 시작
 
 - 배포 후 확인: 초기 구현 커밋 `7edb0db`, GitHub Pages 실행 `35767757993` 성공. 실제 HTTPS 앱에서 격리 Chrome으로 PWA manifest/controller/cache, 새 행사 재고 0·로그 없음, 기존 앱 저장 키 sentinel 보존, 오프라인 새로고침 및 영상 Range 206/1024바이트 응답을 확인했다. 운영 iPad의 데이터는 사용하지 않았다.

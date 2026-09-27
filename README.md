@@ -3,7 +3,7 @@
 Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 - 프로젝트 시작일: 2026-09-23
-- 현재 버전: `swc-apac-v1` / 캐시: `swc2026-apac-lucky-draw-v1`
+- 현재 버전: `swc-apac-v2` / 캐시: `swc2026-apac-lucky-draw-v2`
 - 기반 커밋: `ac2d609cb584ce21ed35a8b32183f80605828791` (Figure Draw v32 기능 + 사용자 확인 문서)
 - 작업 폴더: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`
 - 새 저장소: https://github.com/SSuperWasabi/swc2026-apac-cup-lucky-draw
@@ -12,7 +12,7 @@ Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 ## 지금 완료한 범위
 
-초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. iPad 실기 확인과 새로운 OAP 디자인 적용은 아직이다.
+초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2에서 **소환서 선택 화면을 OAP v8 디자인으로 교체**했다(AE 배경 영상 + 카드·버튼 앱 요소, 명세 [docs/oap-spec/choose-v8](docs/oap-spec/choose-v8/README.md)). 개봉·당첨 화면은 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
 
 기존 앱 코드·Git 이력·테스트·로컬 리소스를 복제하고 새 앱 식별자를 분리했다. 기존 앱 저장소와 운영 데이터는 변경하지 않는다. 새 앱은 미디어 등록 없음, 재고 0, 추첨 기록 없음으로 시작한다. 기본 두 상품 행은 등록 안내용 빈 틀이며 운영 경품이 아니다.
 
@@ -68,6 +68,7 @@ node scripts/test-figure-sw.cjs
 node scripts/test-figure-browser.cjs
 node scripts/test-idle-video-browser.cjs
 node scripts/test-result-video-browser.cjs
+node scripts/test-choose-browser.cjs
 ```
 
 브라우저 검사는 격리된 Chrome 프로필과 임시 로컬 서버를 사용하며 실제 운영 데이터에 접근하지 않는다. 인코딩 검사는 `node scripts/test-scroll-encoding.cjs`이며 로컬 ffmpeg 또는 `FFMPEG` 환경변수가 필요하다. `test-tools/package-lock.json`은 검증 의존성을 고정한다.
@@ -86,6 +87,10 @@ node scripts/test-result-video-browser.cjs
 
 과거 문서에 있는 앱 주소·버전·C/F 경로는 해당 시점의 이력이다. 새 프로젝트의 최신 기준은 이 README와 handoff.md다. 공유 ZIP은 아직 만들지 않았다. 필요 시 `scripts/create-share.ps1`로 생성하되 원본/후보 미디어 포함 범위와 전달 권한을 검토한다.
 
+## OAP AE 작업
+
+AE 원본은 `resource/oap/ae-work/`의 사본에서만 스크립트로 다룬다(`AfterFX.com -r`, 재사용 스크립트 `scripts/ae/`). 절차와 결정 사항은 [handoff.md](handoff.md) 9절을 따른다.
+
 ## 다음 단계
 
-기반 기능 검증 후 최신 AE 원본의 화면별 버전을 확정하고, 선택 화면을 **배경 루프 영상 1개 + 개별 이미지 버튼·카드 + 웹 등장 애니메이션**으로 구현한다. 배치·크기·투명 여백·키프레임·이징·입력 활성화 시점을 먼저 추출한다. 새 경품별 개봉·당첨 연출은 그 다음에 검토한다.
+선택 화면 v8 iPad 확인과 임시 선택 표시 결정 → 전환 세로판 원본 확보 → 오픈 v3 → 당첨 v5(상품별 AE 사전 렌더링, 현재 제라투 기준). 상세는 handoff.md 9절.
