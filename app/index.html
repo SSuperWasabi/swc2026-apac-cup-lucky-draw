@@ -472,11 +472,17 @@
   </div>
 
 
-  <div class="screen figure-screen" id="scr-scrolls">
-    <div class="topbar"><button class="back" onclick="resetToIdle()" aria-label="처음으로">←</button><div class="title">소환서를 선택하세요</div></div>
-    <div class="selection-status"><span id="scroll-status" aria-live="polite"></span><button onclick="randomScroll()">랜덤 선택</button></div>
-    <div class="scroll-grid" id="scroll-grid"></div>
-    <div class="figure-footer"><button class="btn btn-yellow" id="scroll-next" onclick="openSelectedScroll()" disabled>소환서 열기</button><p>12개의 소환서 중 하나를 선택해주세요</p></div>
+  <!-- OAP v8 선택 화면: 배경·제목·로고는 AE 영상, 카드 12장과 버튼 2개만 앱 요소 (docs/oap-spec/choose-v8) -->
+  <div class="screen oap-choose" id="scr-scrolls">
+    <div class="choose-stage" id="choose-stage">
+      <video id="choose-bg-loop" class="choose-bg" src="assets/oap/choose/choose-bg-loop.mp4" muted playsinline loop preload="auto" disablepictureinpicture></video>
+      <video id="choose-bg-intro" class="choose-bg" src="assets/oap/choose/choose-bg-intro.mp4" muted playsinline preload="auto" disablepictureinpicture></video>
+      <div class="scroll-grid" id="scroll-grid"></div>
+      <button class="choose-random choose-anim" id="scroll-random" onclick="randomScroll()" aria-label="랜덤 선택"><img src="assets/oap/choose/random.webp" alt="" draggable="false"></button>
+      <button class="choose-select choose-anim" id="scroll-next" onclick="openSelectedScroll()" aria-disabled="true" aria-label="소환서 열기"><img src="assets/oap/choose/select.webp" alt="" draggable="false"></button>
+      <button class="back choose-back" onclick="resetToIdle()" aria-label="처음으로">←</button>
+      <span id="scroll-status" class="choose-sr" aria-live="polite"></span>
+    </div>
   </div>
   <div class="screen figure-screen" id="scr-open">
     <div class="topbar"><button class="back" id="open-back" onclick="backFromScroll()" aria-label="소환서 다시 선택">←</button><div class="title">소환서를 펼쳐주세요<span id="open-number" class="open-number"></span></div></div>
@@ -543,7 +549,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v1';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v2';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1605,6 +1611,7 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 <div id="scroll-whiteout" aria-hidden="true"></div>
 <script src="scroll-audio.js"></script>
 <script src="result-video.js"></script>
+<script src="choose-screen.js"></script>
 <script src="figure.js"></script>
 </body>
 </html>

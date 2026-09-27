@@ -1,0 +1,314 @@
+{
+  "source": {
+    "aep": "swc2026_CHOOSE_YOUR_SCROLL_iPad_INTRO_LOOP_v8_260923.aep",
+    "comp": "21-1_CHOOSE_YOUR_SCROLL_INTRO_THEN_LOOP_V8",
+    "extractedAt": "Sun Sep 27 2026 17:09:58 GMT+0900",
+    "aeVersion": "26.5x89"
+  },
+  "canvas": {
+    "width": 2048,
+    "height": 2732,
+    "fps": 30,
+    "cssWidth": 1024,
+    "cssHeight": 1366
+  },
+  "timeBase": "Seconds from the first presented frame of choose-bg-intro.mp4",
+  "markers": [
+    {
+      "t": 0,
+      "comment": "INTRO - play once; original staggered scroll entrances"
+    },
+    {
+      "t": 2,
+      "comment": "LOOP START - controls hold; background repeats every 4 seconds"
+    },
+    {
+      "t": 6,
+      "comment": "SECOND BACKGROUND CYCLE"
+    }
+  ],
+  "entranceEnds": 1.435,
+  "translateNote": "translateMaster is in 2048-px master units; divide by 2 for CSS px at 1024 width.",
+  "elements": [
+    {
+      "id": "scroll-01",
+      "start": 0.38,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-02",
+      "start": 0.435,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-03",
+      "start": 0.49,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-04",
+      "start": 0.545,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-05",
+      "start": 0.6,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-06",
+      "start": 0.655,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-07",
+      "start": 0.71,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-08",
+      "start": 0.765,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-09",
+      "start": 0.82,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-10",
+      "start": 0.875,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-11",
+      "start": 0.93,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "scroll-12",
+      "start": 0.985,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          40
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "random",
+      "start": 0.3,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          0
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "select",
+      "start": 0.9,
+      "duration": 0.45,
+      "easing": "linear",
+      "from": {
+        "opacity": 0,
+        "translateMaster": [
+          0,
+          0
+        ]
+      },
+      "to": {
+        "opacity": 1,
+        "translateMaster": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

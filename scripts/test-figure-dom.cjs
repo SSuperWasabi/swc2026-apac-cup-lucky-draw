@@ -12,6 +12,7 @@ for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))evaluate(m[1]);
 evaluate(fs.readFileSync('app/draw-engine.js','utf8'));
 evaluate(fs.readFileSync('app/scroll-audio.js','utf8'));
 evaluate(fs.readFileSync('app/result-video.js','utf8'));
+evaluate(fs.readFileSync('app/choose-screen.js','utf8'));
 evaluate(fs.readFileSync('app/figure.js','utf8'));
 evaluate("stock={ip1:[0,10]};cfg.figureWinPercent=10;cfg.muted=true;"); // participation only: these journeys must reach the result directly (figure wins are covered below)
 w.renderAdmSettings();
@@ -23,7 +24,7 @@ skip.checked=false;w.saveScrollSelectionVisibility();assert.equal(evaluate('cfg.
 w.document.getElementById('idle-banner').click();
 assert.ok(w.document.getElementById('scr-scrolls').classList.contains('active'));
 assert.equal(w.document.querySelectorAll('.scroll-choice').length,12);
-w.chooseScroll(2);assert.equal(w.document.getElementById('scroll-next').disabled,false);
+w.chooseScroll(2);assert.equal(w.document.getElementById('scroll-next').getAttribute('aria-disabled'),'false');
 w.openSelectedScroll();assert.ok(w.document.getElementById('scr-open').classList.contains('active'));
 assert.equal(w.document.getElementById('open-number').textContent,'3번 소환서');assert.equal(w.document.querySelectorAll('#scr-open .drag-hint .drag-chevron').length,10);assert.ok(w.document.querySelector('#scr-open .drag-handle'));
 assert.equal(w.document.querySelectorAll('#scr-open .drag-chevron.is-active').length,0);w.setScrollProgress(.6);assert.equal(w.document.querySelectorAll('#scr-open .drag-chevron.is-active').length,6);w.setScrollProgress(0);

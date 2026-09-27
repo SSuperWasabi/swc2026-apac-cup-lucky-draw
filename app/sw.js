@@ -1,7 +1,7 @@
 /* SWC2026 APAC Cup Lucky Draw — Service Worker
    앱 자산을 사전 캐싱해 오프라인에서도 동작하게 한다.
    ※ 앱을 수정·재배포할 때는 CACHE 버전을 올려야 태블릿이 새 버전을 받는다. */
-const CACHE = 'swc2026-apac-lucky-draw-v1';
+const CACHE = 'swc2026-apac-lucky-draw-v2';
 const ASSETS = [
   './idle-video.js',
   './result-video.js',
@@ -9,6 +9,23 @@ const ASSETS = [
   './draw-engine.js',
   './figure.js',
   './scroll-audio.js',
+  './choose-screen.js',
+  './assets/oap/choose/choose-bg-intro.mp4',
+  './assets/oap/choose/choose-bg-loop.mp4',
+  './assets/oap/choose/random.webp',
+  './assets/oap/choose/select.webp',
+  './assets/oap/choose/scroll-01.webp',
+  './assets/oap/choose/scroll-02.webp',
+  './assets/oap/choose/scroll-03.webp',
+  './assets/oap/choose/scroll-04.webp',
+  './assets/oap/choose/scroll-05.webp',
+  './assets/oap/choose/scroll-06.webp',
+  './assets/oap/choose/scroll-07.webp',
+  './assets/oap/choose/scroll-08.webp',
+  './assets/oap/choose/scroll-09.webp',
+  './assets/oap/choose/scroll-10.webp',
+  './assets/oap/choose/scroll-11.webp',
+  './assets/oap/choose/scroll-12.webp',
   './assets/figure/scroll.webp',
   './assets/figure/scroll-card.webp',
   './assets/figure/zeratu.webp',

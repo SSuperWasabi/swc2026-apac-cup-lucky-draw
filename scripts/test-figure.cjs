@@ -36,7 +36,7 @@ console.log('PASS: default stock weighting, single-category continuation and ful
 const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('app/index.html','utf8');
 const inline=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
-new vm.Script(inline);new vm.Script(fs.readFileSync('app/figure.js','utf8'));new vm.Script(fs.readFileSync('app/idle-video.js','utf8'));
+new vm.Script(inline);new vm.Script(fs.readFileSync('app/figure.js','utf8'));new vm.Script(fs.readFileSync('app/choose-screen.js','utf8'));new vm.Script(fs.readFileSync('app/idle-video.js','utf8'));
 new vm.Script(fs.readFileSync('app/result-video.js','utf8'));
 // Execute the real draw commit in isolation: failed persistence must not consume inventory.
 const src=fs.readFileSync('app/figure.js','utf8');

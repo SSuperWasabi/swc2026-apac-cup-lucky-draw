@@ -1,0 +1,464 @@
+{
+  "source": {
+    "aep": "swc2026_CHOOSE_YOUR_SCROLL_iPad_INTRO_LOOP_v8_260923.aep",
+    "comp": "21-1_CHOOSE_YOUR_SCROLL_INTRO_THEN_LOOP_V8",
+    "extractedAt": "Sun Sep 27 2026 17:09:58 GMT+0900",
+    "aeVersion": "26.5x89"
+  },
+  "canvas": {
+    "width": 2048,
+    "height": 2732,
+    "fps": 30,
+    "cssWidth": 1024,
+    "cssHeight": 1366
+  },
+  "coordinateSystem": "Top-left of each element box after entrance (final state). master = 2048x2732 px; css1024 = master/2; percent = of canvas.",
+  "background": {
+    "intro": {
+      "file": "choose-bg-intro.mp4",
+      "seconds": [
+        0,
+        2
+      ],
+      "playCount": 1
+    },
+    "loop": {
+      "file": "choose-bg-loop.mp4",
+      "seconds": [
+        2,
+        6
+      ],
+      "loop": true
+    },
+    "bakedLayers": [
+      "SUBTITLE - SWC2026 APAC LUCKY DRAW",
+      "TITLE - SCROLL",
+      "TITLE - CHOOSE YOUR",
+      "Com2uS Store - white",
+      "Header contrast - smooth multiply",
+      "APAC original animated gold background"
+    ]
+  },
+  "elements": [
+    {
+      "id": "scroll-01",
+      "aeLayer": "SCROLL 01 - tap target",
+      "aeComp": "SCROLL_CARD_01",
+      "asset": "scroll-01.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 125.02,
+        "top": 562.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 62.51,
+        "top": 281.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 6.104,
+        "top": 20.586,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 1
+    },
+    {
+      "id": "scroll-02",
+      "aeLayer": "SCROLL 02 - tap target",
+      "aeComp": "SCROLL_CARD_02",
+      "asset": "scroll-02.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 589.02,
+        "top": 562.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 294.51,
+        "top": 281.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 28.761,
+        "top": 20.586,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 2
+    },
+    {
+      "id": "scroll-03",
+      "aeLayer": "SCROLL 03 - tap target",
+      "aeComp": "SCROLL_CARD_03",
+      "asset": "scroll-03.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1053.02,
+        "top": 562.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 526.51,
+        "top": 281.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 51.417,
+        "top": 20.586,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 3
+    },
+    {
+      "id": "scroll-04",
+      "aeLayer": "SCROLL 04 - tap target",
+      "aeComp": "SCROLL_CARD_04",
+      "asset": "scroll-04.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1517.02,
+        "top": 562.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 758.51,
+        "top": 281.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 74.073,
+        "top": 20.586,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 4
+    },
+    {
+      "id": "scroll-05",
+      "aeLayer": "SCROLL 05 - tap target",
+      "aeComp": "SCROLL_CARD_05",
+      "asset": "scroll-05.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 125.02,
+        "top": 1147.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 62.51,
+        "top": 573.7,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 6.104,
+        "top": 41.999,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 5
+    },
+    {
+      "id": "scroll-06",
+      "aeLayer": "SCROLL 06 - tap target",
+      "aeComp": "SCROLL_CARD_06",
+      "asset": "scroll-06.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 589.02,
+        "top": 1147.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 294.51,
+        "top": 573.7,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 28.761,
+        "top": 41.999,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 6
+    },
+    {
+      "id": "scroll-07",
+      "aeLayer": "SCROLL 07 - tap target",
+      "aeComp": "SCROLL_CARD_07",
+      "asset": "scroll-07.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1053.02,
+        "top": 1147.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 526.51,
+        "top": 573.7,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 51.417,
+        "top": 41.999,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 7
+    },
+    {
+      "id": "scroll-08",
+      "aeLayer": "SCROLL 08 - tap target",
+      "aeComp": "SCROLL_CARD_08",
+      "asset": "scroll-08.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1517.02,
+        "top": 1147.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 758.51,
+        "top": 573.7,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 74.073,
+        "top": 41.999,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 8
+    },
+    {
+      "id": "scroll-09",
+      "aeLayer": "SCROLL 09 - tap target",
+      "aeComp": "SCROLL_CARD_09",
+      "asset": "scroll-09.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 125.02,
+        "top": 1732.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 62.51,
+        "top": 866.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 6.104,
+        "top": 63.411,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 9
+    },
+    {
+      "id": "scroll-10",
+      "aeLayer": "SCROLL 10 - tap target",
+      "aeComp": "SCROLL_CARD_10",
+      "asset": "scroll-10.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 589.02,
+        "top": 1732.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 294.51,
+        "top": 866.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 28.761,
+        "top": 63.411,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 10
+    },
+    {
+      "id": "scroll-11",
+      "aeLayer": "SCROLL 11 - tap target",
+      "aeComp": "SCROLL_CARD_11",
+      "asset": "scroll-11.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1053.02,
+        "top": 1732.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 526.51,
+        "top": 866.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 51.417,
+        "top": 63.411,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 11
+    },
+    {
+      "id": "scroll-12",
+      "aeLayer": "SCROLL 12 - tap target",
+      "aeComp": "SCROLL_CARD_12",
+      "asset": "scroll-12.png",
+      "assetSize": [
+        434,
+        580
+      ],
+      "scale": 0.94,
+      "master": {
+        "left": 1517.02,
+        "top": 1732.4,
+        "width": 407.96,
+        "height": 545.2
+      },
+      "css1024": {
+        "left": 758.51,
+        "top": 866.2,
+        "width": 203.98,
+        "height": 272.6
+      },
+      "percent": {
+        "left": 74.073,
+        "top": 63.411,
+        "width": 19.92,
+        "height": 19.956
+      },
+      "zIndex": 12
+    },
+    {
+      "id": "random",
+      "aeLayer": "RANDOM - raised yellow button",
+      "aeComp": "RANDOM_BUTTON_V5_CENTER",
+      "asset": "random.png",
+      "assetSize": [
+        620,
+        150
+      ],
+      "scale": 1,
+      "master": {
+        "left": 1316,
+        "top": 373,
+        "width": 620,
+        "height": 150
+      },
+      "css1024": {
+        "left": 658,
+        "top": 186.5,
+        "width": 310,
+        "height": 75
+      },
+      "percent": {
+        "left": 64.258,
+        "top": 13.653,
+        "width": 30.273,
+        "height": 5.49
+      },
+      "zIndex": 13
+    },
+    {
+      "id": "select",
+      "aeLayer": "SELECT YOUR SCROLL - bottom action",
+      "aeComp": "SELECT_YOUR_SCROLL_BUTTON_V8_CENTER",
+      "asset": "select.png",
+      "assetSize": [
+        1818,
+        255
+      ],
+      "scale": 1,
+      "master": {
+        "left": 116,
+        "top": 2352.5,
+        "width": 1818,
+        "height": 255
+      },
+      "css1024": {
+        "left": 58,
+        "top": 1176.25,
+        "width": 909,
+        "height": 127.5
+      },
+      "percent": {
+        "left": 5.664,
+        "top": 86.109,
+        "width": 88.77,
+        "height": 9.334
+      },
+      "zIndex": 14
+    }
+  ]
+}

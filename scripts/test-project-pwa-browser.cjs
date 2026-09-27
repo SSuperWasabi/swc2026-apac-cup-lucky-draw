@@ -2,6 +2,10 @@
 const {chromium}=require('../.tools/node_modules/playwright-core');
 const assert=require('node:assert/strict');
 const target=process.argv[2];
+// Expected identity comes from the local sources that were deployed.
+const fs=require('fs');
+const APP_VER=/const APP_VER='([^']+)'/.exec(fs.readFileSync('app/index.html','utf8'))[1];
+const CACHE=/const CACHE = '([^']+)'/.exec(fs.readFileSync('app/sw.js','utf8'))[1];
 if(!target||new URL(target).protocol!=='https:')throw Error('Pass the deployed HTTPS app URL');
 (async()=>{
  const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -21,21 +25,21 @@ if(!target||new URL(target).protocol!=='https:')throw Error('Pass the deployed H
    oldState:JSON.parse(localStorage.getItem('figure-draw.draw-state.v1')),
    controller:navigator.serviceWorker.controller.scriptURL
   }));
-  assert.equal(state.version,'swc-apac-v1');assert.equal(state.db,'swc2026-apac-lucky-draw-media');
+  assert.equal(state.version,APP_VER);assert.equal(state.db,'swc2026-apac-lucky-draw-media');
   assert.equal(state.eventName,'SWC2026 APAC Cup Lucky Draw');assert.deepEqual(state.stock,{ip1:[0,0]});assert.equal(state.logs,0);
   assert.equal(state.manifest.id,'./swc2026-apac-lucky-draw');
   assert.equal(state.oldConfig.eventName,'OLD EVENT SENTINEL');assert.deepEqual(state.oldState.stock,{legacy:[99]});
-  assert.ok(state.caches.includes('swc2026-apac-lucky-draw-v1'));
+  assert.ok(state.caches.includes(CACHE));
   assert.equal(state.controller,new URL('sw.js',target).href);
   await context.setOffline(true);
   await page.reload({waitUntil:'load'});
-  await page.waitForFunction(()=>typeof idb!=='undefined'&&idb&&document.getElementById('idle-version').textContent==='swc-apac-v1');
+  await page.waitForFunction(ver=>typeof idb!=='undefined'&&idb&&document.getElementById('idle-version').textContent===ver,APP_VER);
   const range=await page.evaluate(async()=>{
    const response=await fetch('assets/figure/sacred-idle.mp4',{headers:{Range:'bytes=0-1023'}});
    return {status:response.status,bytes:(await response.arrayBuffer()).byteLength,range:response.headers.get('Content-Range')};
   });
   assert.equal(range.status,206);assert.equal(range.bytes,1024);
-  await page.screenshot({path:'.tools/swc-apac-v1-offline.png'});
+  await page.screenshot({path:`.tools/${APP_VER}-offline.png`});
   console.log('PASS: deployed PWA identity/controller/cache, fresh event, original storage sentinels unchanged, offline reload and MP4 range',JSON.stringify(range));
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

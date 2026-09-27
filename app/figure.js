@@ -214,10 +214,13 @@ for(const event of ['waiting','pause'])scrollVideo().addEventListener(event,()=>
   if(openingAudioActive&&!openingNativeAudio)ScrollSound.stop();
 });
 go = function(id){
+  const prevScreen=currentScreen;
   if(id!=='scr-result')resultLoop.hide();
   const resultScreen=document.getElementById('scr-result');resultScreen.inert=id!=='scr-result';resultScreen.setAttribute('aria-hidden',String(id!=='scr-result'));
   if(id!=='scr-open'){openingAudioActive=false;cancelScrollWait();scrollPrimeEpoch++;scrollPrimeTask=null;}
+  if(prevScreen==='scr-scrolls'&&id!=='scr-scrolls')chooseScreen.leave();
   figureBase.go(id);if(id==='scr-idle')syncIdleTitleLayout();
+  if(id==='scr-scrolls')chooseScreen.enter();
   scheduleResultLoop();
   if(id==='scr-open')startScrollLoop();else{ScrollSound.stop();scrollMix(false);scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();document.getElementById('scroll-idle-video').pause();if(id!=='scr-result'){cancelAnimationFrame(whiteoutFrame);scrollWhiteout(0);}}
 };
@@ -229,7 +232,7 @@ refreshIdleSoldout = function(){
   document.getElementById('scr-idle').classList.toggle('soldout',!state.ok);
   document.getElementById('idle-banner').textContent=state.ok?'TOUCH': '이벤트 준비 중 · 스태프에게 문의해주세요';
 }
-bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();} // The idle screen shows the logo lockup only.
+bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();},1500);} // The idle screen shows the logo lockup only.
 function startFigureGame(){
   const state=figureAvailable();if(!state.ok){toast(state.reason);return;}
   selectedScroll=null;
@@ -240,16 +243,21 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
   if(e.target.closest('#admin-tap'))return;
   e.stopImmediatePropagation();startFigureGame();
 },true);
+// The grid is built once; re-rendering would restart the card entrance animation.
+const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
+window.chooseScreenDiagnostics=chooseScreen.diagnostics;
+buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
 function renderScrollSelection(){
-  document.getElementById('scroll-grid').innerHTML=Array.from({length:12},(_,i)=>`<button class="scroll-choice" aria-label="${i+1}번 소환서 선택" aria-pressed="${selectedScroll===i}" onclick="chooseScroll(${i})"><img src="assets/figure/scroll.webp" alt=""><span>${String(i+1).padStart(2,'0')}</span></button>`).join('');
+  document.querySelectorAll('#scroll-grid .scroll-choice').forEach((b,i)=>b.setAttribute('aria-pressed',String(selectedScroll===i)));
   document.getElementById('scroll-status').textContent=selectedScroll==null?'소환서를 선택해주세요':`${selectedScroll+1}번 소환서 선택`;
-  document.getElementById('scroll-next').disabled=selectedScroll==null;
+  // Keep the AE look; an unselected press explains instead of dimming the button.
+  document.getElementById('scroll-next').setAttribute('aria-disabled',String(selectedScroll==null));
 }
 function chooseScroll(i){selectedScroll=selectedScroll===i?null:i;playSfx('pick');renderScrollSelection();manageIdle();}
 function randomScroll(){selectedScroll=Math.floor(Math.random()*12);playSfx('pick');renderScrollSelection();manageIdle();}
 function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else go('scr-scrolls');}}
 function openSelectedScroll(){
-  if(selectedScroll==null)return;
+  if(selectedScroll==null){if(currentScreen==='scr-scrolls')toast('소환서를 먼저 선택해주세요');return;}
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}
   drawing=false;setScrollProgress(0);document.getElementById('scr-open').classList.remove('opening');
   document.getElementById('scroll-open-btn').disabled=false;

@@ -17,11 +17,12 @@ w.HTMLMediaElement.prototype.play=async()=>{};
 w.HTMLElement.prototype.setPointerCapture=()=>{};
 run(fs.readFileSync('app/idle-video.js','utf8'));
 for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))run(m[1]);
-for(const file of ['draw-engine.js','scroll-audio.js','result-video.js','figure.js'])run(fs.readFileSync('app/'+file,'utf8'));
+for(const file of ['draw-engine.js','scroll-audio.js','result-video.js','choose-screen.js','figure.js'])run(fs.readFileSync('app/'+file,'utf8'));
 
 (async()=>{
  try{
-  assert.equal(run('APP_VER'),'swc-apac-v1');
+  const swCache=/const CACHE = '(swc2026-apac-lucky-draw-v(\d+))'/.exec(fs.readFileSync('app/sw.js','utf8'));
+  assert.ok(swCache,'sw.js CACHE');assert.equal(run('APP_VER'),'swc-apac-v'+swCache[2]); // APP_VER and SW cache move together
   assert.equal(run('cfg.eventName'),'SWC2026 APAC Cup Lucky Draw');
   assert.equal(run('logArr.length'),0);
   assert.equal(run('JSON.stringify(stock)'),'{"ip1":[0,0]}');
@@ -59,7 +60,7 @@ for(const file of ['draw-engine.js','scroll-audio.js','result-video.js','figure.
 
   const manifestPwa=JSON.parse(fs.readFileSync('app/manifest.webmanifest','utf8'));
   assert.equal(manifestPwa.id,'./'+prefix);assert.equal(manifestPwa.scope,'./');assert.equal(manifestPwa.start_url,'./index.html');
-  const handlers={},deleted=[],cacheNames=['figure-draw-v32','kuji-v31',prefix+'-v0',prefix+'-v1'];
+  const handlers={},deleted=[],cacheNames=['figure-draw-v32','kuji-v31',prefix+'-v0',swCache[1]];
   let claimed=false;
   vm.runInNewContext(fs.readFileSync('app/sw.js','utf8'),{
    self:{addEventListener:(name,fn)=>handlers[name]=fn,clients:{claim:async()=>{claimed=true;}}},
