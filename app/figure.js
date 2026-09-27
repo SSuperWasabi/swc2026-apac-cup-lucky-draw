@@ -249,6 +249,7 @@ window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
 function renderScrollSelection(){
   document.querySelectorAll('#scroll-grid .scroll-choice').forEach((b,i)=>b.setAttribute('aria-pressed',String(selectedScroll===i)));
+  document.getElementById('choose-stage').classList.toggle('has-selection',selectedScroll!=null);
   document.getElementById('scroll-status').textContent=selectedScroll==null?'소환서를 선택해주세요':`${selectedScroll+1}번 소환서 선택`;
   // Keep the AE look; an unselected press explains instead of dimming the button.
   document.getElementById('scroll-next').setAttribute('aria-disabled',String(selectedScroll==null));

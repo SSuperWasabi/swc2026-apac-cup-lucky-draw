@@ -478,9 +478,9 @@
       <video id="choose-bg-loop" class="choose-bg" src="assets/oap/choose/choose-bg-loop.mp4" muted playsinline loop preload="auto" disablepictureinpicture></video>
       <video id="choose-bg-intro" class="choose-bg" src="assets/oap/choose/choose-bg-intro.mp4" muted playsinline preload="auto" disablepictureinpicture></video>
       <div class="scroll-grid" id="scroll-grid"></div>
-      <button class="choose-random choose-anim" id="scroll-random" onclick="randomScroll()" aria-label="랜덤 선택"><img src="assets/oap/choose/random.webp" alt="" draggable="false"></button>
-      <button class="choose-select choose-anim" id="scroll-next" onclick="openSelectedScroll()" aria-disabled="true" aria-label="소환서 열기"><img src="assets/oap/choose/select.webp" alt="" draggable="false"></button>
-      <button class="back choose-back" onclick="resetToIdle()" aria-label="처음으로">←</button>
+      <button class="choose-random choose-anim" id="scroll-random" onclick="randomScroll()" aria-label="랜덤 선택"><img src="assets/oap/choose/random.webp" alt="" draggable="false"><span class="btn-shine"></span></button>
+      <button class="choose-select choose-anim" id="scroll-next" onclick="openSelectedScroll()" aria-disabled="true" aria-label="소환서 열기"><span class="btn-glow"></span><img src="assets/oap/choose/select.webp" alt="" draggable="false"><span class="btn-shine"></span></button>
+      <button class="back choose-back" onclick="resetToIdle()" aria-label="처음으로"><span aria-hidden="true">←</span>HOME</button>
       <span id="scroll-status" class="choose-sr" aria-live="polite"></span>
     </div>
   </div>
@@ -549,7 +549,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v2';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v3';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){

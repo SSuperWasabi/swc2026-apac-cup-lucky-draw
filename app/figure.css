@@ -131,6 +131,9 @@
 #scr-scrolls .scroll-grid{position:absolute;inset:0;z-index:2}
 #scr-scrolls .scroll-choice{position:absolute;width:calc(100%*407.96/2048);height:calc(100%*545.2/2732);padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #scr-scrolls .scroll-choice img,.choose-random img,.choose-select img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+#scr-scrolls .card-lift{position:absolute;inset:0;display:block;transition:transform .18s ease-out,filter .18s ease-out}
+/* With a selection, the other cards step back so the chosen one reads at a glance. */
+.choose-stage.has-selection #scroll-grid .scroll-choice[aria-pressed=false] .card-lift{filter:brightness(.78) saturate(.9)}
 .choose-random,.choose-select{position:absolute;z-index:3;padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .choose-random{left:calc(100%*1316/2048);top:calc(100%*373/2732);width:calc(100%*620/2048);height:calc(100%*150/2732)}
 .choose-select{left:calc(100%*116/2048);top:calc(100%*2352.5/2732);width:calc(100%*1818/2048);height:calc(100%*255/2732)}
@@ -141,8 +144,39 @@
 .choose-random{--delay:.3s}.choose-select{--delay:.9s}
 @keyframes choose-fade{from{opacity:0}to{opacity:1}}
 @keyframes choose-rise{from{opacity:0;transform:translateY(calc(100cqh*40/2732))}to{opacity:1;transform:none}}
-/* Not in AE: provisional selected state and back control (to be confirmed). */
-#scr-scrolls .scroll-choice[aria-pressed=true]::after{content:'';position:absolute;inset:-.9cqw;border:.7cqw solid #fff4c2;border-radius:1.2cqw;box-shadow:0 0 2.4cqw #ffd54a,inset 0 0 1.6cqw #ffd54a88;pointer-events:none}
-.choose-back{pointer-events:auto;position:absolute;z-index:4;left:1.4cqw;top:1.1cqh;width:4.4cqw;height:4.4cqw;min-width:40px;min-height:40px;border-radius:50%;border:1px solid #ffffff66;background:#00000033;color:#fff;font-size:max(18px,2.2cqw);line-height:1;display:grid;place-items:center;padding:0}
+/* Not in AE (approved direction 2026-09-27): selected state, button affordance and HOME control. */
+/* Selected card: gold outline + breathing glow, slight lift, diagonal shine and edge glitter.
+   Only the selected card animates; the other layers are display:none. */
+#scr-scrolls .scroll-choice[aria-pressed=true]{z-index:2}
+#scr-scrolls .scroll-choice[aria-pressed=true] .card-lift{transform:scale(1.035)}
+#scr-scrolls .scroll-choice[aria-pressed=true]::after{content:'';position:absolute;z-index:1;inset:-.9cqw;border:.75cqw solid #fffdf2;border-radius:1.2cqw;box-shadow:0 0 0 .45cqw #b55400,0 0 2.4cqw .7cqw #ffe27a,inset 0 0 1.2cqw #ffd54a99;pointer-events:none;transform:scale(1.035)}
+#scr-scrolls .card-glow,#scr-scrolls .card-shine,#scr-scrolls .card-glitter{display:none;position:absolute;pointer-events:none}
+#scr-scrolls .scroll-choice[aria-pressed=true] :is(.card-glow,.card-shine,.card-glitter){display:block}
+#scr-scrolls .card-glow{inset:-2.2cqw;border-radius:3cqw;background:radial-gradient(closest-side,#fff3b000 62%,#ffd84fcc 80%,#ffd84f00 100%);animation:card-breathe 1.6s ease-in-out infinite;transform:scale(1.035)}
+#scr-scrolls .card-shine{inset:0;overflow:hidden}
+#scr-scrolls .card-shine::before{content:'';position:absolute;top:-20%;left:-60%;width:45%;height:140%;background:linear-gradient(100deg,#fff0 0%,#fff9 45%,#fffbe8 50%,#fff9 55%,#fff0 100%);transform:translateX(-120%) rotate(12deg);animation:card-shine 2.2s ease-in-out infinite}
+#scr-scrolls .card-glitter{inset:0;z-index:2;transform:scale(1.035)} /* above the outline */
+#scr-scrolls .card-glitter i{position:absolute;aspect-ratio:1;translate:-50% -50%;background:radial-gradient(circle,#fff 0 28%,#fff1a8 48%,#ffd24a 66%,#ffd24a00 80%);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);filter:drop-shadow(0 0 .22cqw #9a4300) drop-shadow(0 0 .9cqw #fff3b0);opacity:0;animation:card-twinkle 1.6s ease-in-out var(--d) infinite}
+@keyframes card-breathe{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes card-shine{0%{transform:translateX(0) rotate(12deg)}55%,100%{transform:translateX(420%) rotate(12deg)}}
+@keyframes card-twinkle{0%,100%{opacity:0;transform:scale(.2) rotate(0)}35%,55%{opacity:1;transform:scale(1) rotate(45deg)}75%{opacity:.7;transform:scale(.7) rotate(70deg)}}
+/* RANDOM / SELECT affordance: a shine clipped to the button art sweeps periodically after the entrance;
+   SELECT also breathes once a card is chosen; both press down on touch. */
+.choose-random .btn-shine,.choose-select .btn-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.choose-random .btn-shine{-webkit-mask-image:url(assets/oap/choose/random.webp);mask-image:url(assets/oap/choose/random.webp)}
+.choose-select .btn-shine{-webkit-mask-image:url(assets/oap/choose/select.webp);mask-image:url(assets/oap/choose/select.webp)}
+.btn-shine::before{content:'';position:absolute;top:-10%;left:-40%;width:28%;height:120%;background:linear-gradient(100deg,#fff0 0%,#fffc 50%,#fff0 100%);transform:skewX(-18deg)}
+.choose-stage.is-interactive .btn-shine{opacity:1}
+.choose-stage.is-interactive .choose-random .btn-shine::before{animation:btn-sweep 3.2s ease-in-out .2s infinite}
+.choose-stage.is-interactive .choose-select .btn-shine::before{animation:btn-sweep 2.4s ease-in-out .6s infinite}
+@keyframes btn-sweep{0%{left:-40%}45%,100%{left:120%}}
+.choose-select .btn-glow{position:absolute;inset:4% .6% 8%;border-radius:1.4cqw;pointer-events:none;opacity:0;box-shadow:0 0 2.8cqw .1cqw #fff2a6,0 0 1cqw #ffe27acc}
+.choose-stage.has-selection.is-interactive .choose-select .btn-glow{animation:card-breathe 1.2s ease-in-out infinite}
+.choose-random img,.choose-select img{transition:transform .09s ease-out}
+.choose-random:active img,.choose-select:active img,.choose-random:active .btn-shine,.choose-select:active .btn-shine{transform:scale(.965)}
+.choose-back{pointer-events:auto;position:absolute;z-index:4;left:1.8cqw;top:1.3cqh;height:3.6cqh;min-height:40px;padding:0 2.2cqw 0 1.7cqw;display:flex;align-items:center;gap:.9cqw;border-radius:999px;border:1px solid #ffffff8c;background:#3a1d0066;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font:700 max(14px,1.95cqw)/1 'Unbounded','Pretendard',sans-serif;letter-spacing:.04em;box-shadow:0 .3cqw 1cqw #0003}
+.choose-back span{font-size:1.15em;line-height:1}
+.choose-back:active{transform:scale(.96)}
+@font-face{font-family:'Unbounded';src:url(assets/fonts/Unbounded-Bold.ttf) format('truetype');font-weight:700;font-display:swap}
 .choose-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media(prefers-reduced-motion:reduce){.choose-stage.is-playing .choose-anim{animation-duration:.01s}}
+@media(prefers-reduced-motion:reduce){.choose-stage.is-playing .choose-anim{animation-duration:.01s}#scr-scrolls .card-glow,#scr-scrolls .card-shine::before,#scr-scrolls .card-glitter i,.btn-shine::before,.choose-select .btn-glow{animation:none}#scr-scrolls .card-glitter i{opacity:.8;transform:scale(.8)}}

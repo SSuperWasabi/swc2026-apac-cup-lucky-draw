@@ -87,10 +87,18 @@ const CHOOSE_CARD_LAYOUT = (() => {
   }));
 })();
 
+// Selected-card glitter: sparkles sit on the card edge (x/y in % of the card, size in % of its width).
+const CHOOSE_SPARKLES = [
+  [-3, 9, 16, 0], [101, 24, 12, .45], [86, -3, 17, .9], [6, 97, 14, .3],
+  [102, 80, 17, 1.15], [44, -4, 11, .6], [-4, 58, 12, 1.3], [62, 102, 15, .15]
+];
+const CHOOSE_GLITTER = CHOOSE_SPARKLES.map(([x, y, s, d]) => `<i style="left:${x}%;top:${y}%;width:${s}%;--d:${d}s"></i>`).join('');
+
 function buildChooseGrid(grid, onChoose) {
   grid.innerHTML = CHOOSE_CARD_LAYOUT.map((c, i) => {
     const n = String(i + 1).padStart(2, '0');
-    return `<button class="scroll-choice choose-anim choose-rise" style="left:calc(100%*${c.left}/2048);top:calc(100%*${c.top}/2732);--delay:${c.delay.toFixed(3)}s" aria-label="${i + 1}번 소환서 선택" aria-pressed="false" data-index="${i}"><img src="assets/oap/choose/scroll-${n}.webp" alt="" draggable="false"></button>`;
+    // Glow, shine and glitter layers only animate while the card is selected (display:none otherwise).
+    return `<button class="scroll-choice choose-anim choose-rise" style="left:calc(100%*${c.left}/2048);top:calc(100%*${c.top}/2732);--delay:${c.delay.toFixed(3)}s" aria-label="${i + 1}번 소환서 선택" aria-pressed="false" data-index="${i}"><span class="card-lift"><img src="assets/oap/choose/scroll-${n}.webp" alt="" draggable="false"><span class="card-shine"></span></span><span class="card-glow"></span><span class="card-glitter">${CHOOSE_GLITTER}</span></button>`;
   }).join('');
   grid.querySelectorAll('.scroll-choice').forEach(b => b.addEventListener('click', () => onChoose(Number(b.dataset.index))));
 }

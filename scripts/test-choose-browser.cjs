@@ -66,6 +66,8 @@ const state=page=>page.evaluate(()=>{
 
   // 4) Visual comparison with the AE frame at t=3 s (loop t=1 s), all entrances complete.
   // Wait for the seeked frame to be presented (headless keeps the old frame after a paused seek otherwise).
+  // Button shines are an app overlay, not part of the AE frame: park them off the button first.
+  await page.evaluate(()=>document.getAnimations().forEach(a=>{if(a.animationName==='btn-sweep'){a.pause();a.currentTime=0;}}));
   const presented=await page.evaluate(async()=>{const l=document.getElementById('choose-bg-loop');l.pause();l.currentTime=1;await new Promise(r=>l.addEventListener('seeked',r,{once:true}));const shown=new Promise(r=>l.requestVideoFrameCallback((now,meta)=>{l.pause();r(meta.mediaTime);}));l.play();const t=await Promise.race([shown,new Promise(r=>setTimeout(()=>r(null),3000))]);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return t;});
   assert.ok(presented!==null&&Math.abs(presented-1)<0.04,`presented loop frame at ${presented}`);
   const shot=path.resolve('.tools/choose-v8-t3.png');await page.locator('#choose-stage').screenshot({path:shot});
@@ -86,7 +88,7 @@ const state=page=>page.evaluate(()=>{
    for(const [id,v] of Object.entries(scores))assert.ok(v>30,`${id} vs AE PSNR ${v}`);
    console.log('PASS: every app element vs AE master frame (t=3 s) PSNR > 30 dB within +-1 device px; min %s dB',Math.min(...Object.values(scores)).toFixed(2));
   }else console.log('SKIP: AE reference frame not present locally');
-  await page.evaluate(()=>document.getElementById('choose-bg-loop').play());
+  await page.evaluate(()=>{document.getElementById('choose-bg-loop').play();document.getAnimations().forEach(a=>{if(a.animationName==='btn-sweep')a.play();});});
 
   // 5) Selection behaviour and handoff to the open screen.
   assert.equal(await page.getAttribute('#scroll-next','aria-disabled'),'true');
@@ -95,13 +97,23 @@ const state=page=>page.evaluate(()=>{
   await page.locator('#scroll-grid .scroll-choice').nth(2).click();
   assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('#scroll-grid .scroll-choice')].map(b=>b.getAttribute('aria-pressed')==='true').flatMap((p,i)=>p?[i]:[])),[2]);
   assert.equal(await page.getAttribute('#scroll-next','aria-disabled'),'false');
+  await page.waitForTimeout(300); // let the .18 s dim transition finish
+  const look=await page.evaluate(()=>{const cards=[...document.querySelectorAll('#scroll-grid .scroll-choice')];const cs=e=>getComputedStyle(e);
+   return {stage:document.getElementById('choose-stage').classList.contains('has-selection'),glitter:cs(cards[2].querySelector('.card-glitter')).display,otherGlitter:cs(cards[3].querySelector('.card-glitter')).display,
+    otherFilter:cs(cards[3].querySelector('.card-lift')).filter,selectedFilter:cs(cards[2].querySelector('.card-lift')).filter,
+    twinkles:document.getAnimations().filter(a=>a.animationName==='card-twinkle').length,selectGlow:document.getAnimations().some(a=>a.animationName==='card-breathe'&&a.effect.target.classList.contains('btn-glow')),
+    home:document.querySelector('#scr-scrolls .choose-back').textContent.trim(),homeFont:cs(document.querySelector('#scr-scrolls .choose-back')).fontFamily};});
+  assert.equal(look.stage,true);assert.equal(look.glitter,'block');assert.equal(look.otherGlitter,'none');
+  assert.match(look.otherFilter,/brightness\(0\.78\)/);assert.equal(look.selectedFilter,'none');assert.equal(look.twinkles,8,'only the selected card twinkles');assert.equal(look.selectGlow,true);
+  assert.equal(look.home,'←HOME');assert.match(look.homeFont,/Unbounded/);
+  assert.equal(await page.evaluate(()=>document.fonts.check('700 20px Unbounded')),true);
   await page.locator('#scroll-random').click();
   assert.equal(await page.evaluate(()=>document.querySelectorAll('#scroll-grid .scroll-choice[aria-pressed=true]').length),1);
   const stockBefore=await page.evaluate(()=>JSON.stringify(stock));
   await page.locator('#scroll-next').click();
-  s=await state(page);assert.equal(s.screen,'scr-open');assert.deepEqual(s.classes,[]);assert.equal(s.introPaused,true);assert.equal(s.loopPaused,true);
+  s=await state(page);assert.equal(s.screen,'scr-open');assert.deepEqual(s.classes.filter(c=>c!=='has-selection'),[]); // selection persists into the open screenassert.equal(s.introPaused,true);assert.equal(s.loopPaused,true);
   assert.equal(await page.evaluate(()=>JSON.stringify(stock)),stockBefore,'selecting does not draw');
-  console.log('PASS: single selection, random, SELECT opens scroll without drawing; choose videos stop on leave');
+  console.log('PASS: single selection with glitter/dimming/SELECT glow, random, HOME label, SELECT opens scroll without drawing; choose videos stop on leave');
 
   // 6) Re-entry replays the intro from its start; back button returns home.
   await page.evaluate(()=>backFromScroll());
