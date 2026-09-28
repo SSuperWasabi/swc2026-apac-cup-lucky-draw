@@ -49,14 +49,7 @@
     "height": 150,
     "source": "AE reserved area (futureDragGuide)"
   },
-  "autoOpenButton": {
-    "left": 311.059,
-    "top": 2507.5,
-    "width": 1425.882,
-    "height": 200,
-    "scale": 0.784,
-    "asset": "open-button.webp"
-  },
+  "autoOpen": "No on-screen button (removed v4 for layout balance). Enter on the scroll or a tap after a playback failure runs the 1.8x path.",
   "backButton": {
     "label": "← BACK",
     "note": "App control above the emblem, same style as the choose screen HOME pill"

@@ -205,14 +205,16 @@
 #scr-open .drag-handle{top:4px;height:calc(100% - 8px);border:2px solid #fff6cc;background:linear-gradient(180deg,#fff3b8 0%,#ffd24d 50%,#f2a800 100%);box-shadow:inset 0 2px 3px #ffffff80,0 3px 10px #0007,0 0 12px #ffd46366}
 #scr-open .drag-grip-dots i{background:#6b3a07;box-shadow:none}
 #scr-open .drag-handle-arrows i{background:linear-gradient(135deg,#8a4a0c,#5b2f14)}
-/* Automatic open: AE "OPEN YOUR SCROLL" button art at 78.4% in the empty band under the SLIDE bar. */
-.open-auto{position:absolute;z-index:3;left:calc(100%*311.059/2048);top:calc(100%*2507.5/2732);width:calc(100%*1425.882/2048);height:calc(100%*200/2732);padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.open-auto img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;transition:transform .09s ease-out}
-.open-auto .btn-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;-webkit-mask:url(assets/oap/open/open-button.webp) 0 0/100% 100%;mask:url(assets/oap/open/open-button.webp) 0 0/100% 100%}
-#scr-open.active .open-auto .btn-shine::before{animation:btn-sweep 2.8s ease-in-out .4s infinite}
-.open-auto:active img,.open-auto:active .btn-shine{transform:scale(.965)}
-.open-auto:disabled{cursor:default}
-#scr-open.opening .open-auto .btn-shine::before{animation:none}
-@media(prefers-reduced-motion:reduce){#scr-open .open-auto .btn-shine::before{animation:none}}
 /* On the open frame's white corner the translucent pill turns grey; use the SLIDE bar brown. */
 .open-back{background:#5b2f14eb;border-color:#ffd46399;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* OAP v5 WIN PRIZE — full-screen AE pre-render over the result card for figure wins. */
+.win-stage{display:none}
+#scr-result.oap-win .win-stage{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:linear-gradient(#f3dca1,#f2f6dc)}
+.win-frame{position:relative;width:min(100%,calc(100dvh*2048/2732));aspect-ratio:2048/2732;container-type:size;overflow:hidden;background:#f6c21a}
+.win-video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}
+/* Staff check in the empty lower-right triangle, clear of the figure base and the POP-UP STORE panel. */
+.win-staff{position:absolute;right:3.2cqw;bottom:2.4cqh;display:flex;flex-direction:column;align-items:flex-end;gap:.5cqh;padding:1.3cqh 2.4cqw;border-radius:1.6cqw;background:#5b2f14eb;border:1px solid #ffd46399;color:#fff;font:600 max(11px,1.35cqw)/1.2 'Unbounded',sans-serif;letter-spacing:.03em;box-shadow:0 .4cqw 1.4cqw #0005;opacity:0;animation:win-staff-in .4s ease-out 2.4s both}
+.win-staff b{font-weight:800;color:#ffe27a}
+.win-staff span{font-weight:500;font-size:1.25em}
+@keyframes win-staff-in{from{opacity:0;transform:translateY(1cqh)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.win-staff{animation-duration:.01s}}

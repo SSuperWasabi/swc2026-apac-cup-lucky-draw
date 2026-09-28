@@ -161,3 +161,35 @@ class OpenBackdrop {
     this.video.pause();
   }
 }
+
+// WIN PRIZE (OAP v5): the prize video is an AE pre-render (one per prize); it plays once from
+// frame 0 when the result shows and holds its last frame. Parked at 0 while hidden.
+class WinScreen {
+  constructor(stage) {
+    this.video = stage.querySelector('#win-video');
+    this.active = false;
+  }
+
+  rewind() {
+    try { if (this.video.currentTime !== 0) this.video.currentTime = 0; } catch (e) { /* not seekable yet */ }
+  }
+
+  prime() {
+    const v = this.video;
+    const done = () => { if (this.active) return; v.pause(); this.rewind(); };
+    Promise.resolve().then(() => v.play()).then(done, done);
+  }
+
+  play() {
+    this.active = true;
+    this.rewind();
+    // Start in the same task as the result swap so the first frame is ready when the white lifts.
+    try { const p = this.video.play(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* no media support */ }
+  }
+
+  stop() {
+    this.active = false;
+    this.video.pause();
+    this.rewind();
+  }
+}

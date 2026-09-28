@@ -36,11 +36,12 @@ const server=http.createServer((req,res)=>{
   // 1) Frame loop plays only on this screen; boxes sit at the AE master coordinates.
   await page.waitForFunction(()=>!document.getElementById('open-frame-video').paused,null,{timeout:5000});
   const boxes=await page.evaluate(()=>{const st=document.getElementById('open-stage').getBoundingClientRect();const rel=s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:(r.left-st.left)*2,top:(r.top-st.top)*2,width:r.width*2,height:r.height*2};};
-   return {stage:[st.width,st.height],slot:rel('#scroll-drag'),drag:rel('#scroll-drag .drag-hint'),auto:rel('#scroll-open-btn')};});
+   return {stage:[st.width,st.height],slot:rel('#scroll-drag'),drag:rel('#scroll-drag .drag-hint')};});
   assert.deepEqual(boxes.stage,[1024,1366]);
-  for(const [id,key] of [['slot','videoSlot'],['drag','dragGuide'],['auto','autoOpenButton']])
+  assert.equal(await page.locator('#scroll-open-btn').count(),0,'v4: no on-screen OPEN button');
+  for(const [id,key] of [['slot','videoSlot'],['drag','dragGuide']])
    for(const k of ['left','top','width','height'])assert.ok(Math.abs(boxes[id][k]-layout[key][k])<0.6,`${id}.${k} ${boxes[id][k]} vs ${layout[key][k]}`);
-  console.log('PASS: frame loop playing; slot, drag guide and OPEN button at AE master coordinates (+-0.6 px)');
+  console.log('PASS: frame loop playing; slot and drag guide at AE master coordinates (+-0.6 px); no OPEN button');
 
   // 2) Frame + scroll clip vs the AE IDLE_V3 frame at t=1 s (app overlays excluded).
   await page.evaluate(()=>document.getAnimations().forEach(a=>{if(a.animationName==='btn-sweep'||a.animationName==='drag-chevron-flow'){a.pause();a.currentTime=0;}}));
@@ -65,13 +66,18 @@ const server=http.createServer((req,res)=>{
 
   // 3) Playback failure explains in the centred hint (the button stays AE art), then leaving pauses the frame.
   await page.evaluate(()=>{drawing=true;scrollPlaybackError();});
-  const failed=await page.evaluate(()=>({hint:document.getElementById('open-hint').classList.contains('is-visible'),text:document.getElementById('open-hint').textContent,img:!!document.querySelector('#scroll-open-btn img'),label:document.getElementById('scroll-open-btn').getAttribute('aria-label')}));
-  assert.equal(failed.hint,true);assert.match(failed.text,/RETRY/);assert.equal(failed.img,true);assert.equal(failed.label,'Replay the scroll video');
+  const failed=await page.evaluate(()=>({hint:document.getElementById('open-hint').classList.contains('is-visible'),text:document.getElementById('open-hint').textContent,failed:scrollPlaybackFailed}));
+  assert.equal(failed.hint,true);assert.match(failed.text,/RETRY/);assert.equal(failed.failed,true);
+  // Tapping the scroll retries the committed opening (no second draw).
+  const logs=await page.evaluate(()=>logArr.length);
+  await page.evaluate(()=>{playOpeningVideo=()=>{window.__retried=true;scrollPlaybackFailed=false;};});
+  await page.locator('#scroll-drag').dispatchEvent('pointerdown',{pointerId:1,button:0});
+  assert.deepEqual(await page.evaluate(()=>({retried:!!window.__retried,logs:logArr.length})),{retried:true,logs});
   await page.evaluate(()=>{drawing=false;});
   await page.locator('#open-back').click();
   const back=await page.evaluate(()=>({screen:currentScreen,frame:document.getElementById('open-frame-video').paused,hint:document.getElementById('open-hint').classList.contains('is-visible'),label:document.getElementById('open-back').textContent.trim()}));
   assert.deepEqual(back,{screen:'scr-scrolls',frame:true,hint:false,label:'←BACK'});
-  console.log('PASS: retry hint keeps the AE button; BACK returns to selection and pauses the frame loop');
+  console.log('PASS: retry hint, tap on the scroll retries without a second draw; BACK returns to selection and pauses the frame loop');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -18,11 +18,6 @@ const r3 = n => Math.round(n * 1000) / 1000;
 const slot = { left: r3(pos[0] - anchor[0] * scale), top: r3(pos[1] - anchor[1] * scale), width: r3(clip.source.width * scale), height: r3(clip.source.height * scale) };
 for (const k of ['left', 'top', 'width', 'height']) if (Math.abs(slot[k] - ae.videoSlot[k]) > 0.01) throw new Error(`slot.${k} ${slot[k]} != AE layout ${ae.videoSlot[k]}`);
 
-// App-only element: AE "OPEN YOUR SCROLL" button art (1818x255) fitted to 200 px in the band under the SLIDE bar.
-const bandTop = ae.instruction.y + ae.instruction.height, bandBottom = ae.canvas.height;
-const btnScale = 200 / 255, btnW = 1818 * btnScale;
-const auto = { left: r3((ae.canvas.width - btnW) / 2), top: r3((bandTop + bandBottom) / 2 - 100), width: r3(btnW), height: 200, scale: r3(btnScale), asset: 'open-button.webp' };
-
 const out = {
   source: { aep: path.basename(s.project), comps: [IDLE, '04_Caster_Cam2_OPEN_SCROLL_IPAD_FRAME_V3', '04_Caster_Cam2_OPEN_SCROLL_IPAD_OPEN_V3'], extractedAt: s.extractedAt, aeVersion: s.aeVersion },
   canvas: { width: ae.canvas.width, height: ae.canvas.height, fps: ae.canvas.fps },
@@ -31,9 +26,9 @@ const out = {
   videoSlot: { ...slot, sourceSize: [clip.source.width, clip.source.height], scale: r3(scale), idleClip: 'sacred-idle.mp4 (loops 101/30 s)', openClip: 'sacred-open.mp4 (drag progress -> source time)' },
   instructionBar: { left: ae.instruction.x, top: ae.instruction.y, width: ae.instruction.width, height: ae.instruction.height, text: ae.instruction.text, baked: true },
   dragGuide: { left: ae.futureDragGuide.x, top: ae.futureDragGuide.y, width: ae.futureDragGuide.width, height: ae.futureDragGuide.height, source: 'AE reserved area (futureDragGuide)' },
-  autoOpenButton: auto,
+  autoOpen: 'No on-screen button (removed v4 for layout balance). Enter on the scroll or a tap after a playback failure runs the 1.8x path.',
   backButton: { label: '← BACK', note: 'App control above the emblem, same style as the choose screen HOME pill' }
 };
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'layout.json'), JSON.stringify(out, null, 2) + '\n');
-console.log('slot', JSON.stringify(slot), 'auto', JSON.stringify(auto));
+console.log('slot', JSON.stringify(slot));

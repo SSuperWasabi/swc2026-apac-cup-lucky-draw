@@ -108,7 +108,7 @@ assert.equal(evaluate('bgmDucked'),true);
 evaluate('Object.assign(ScrollSound,autoAudioSaved);cfg.muted=true');
 console.log('PASS: automatic reveal keeps native video muted and cues/pauses shared audio at playback offsets');
 video.dispatchEvent(new w.Event('error'));
-assert.equal(w.document.getElementById('scroll-open-btn').disabled,false);
+assert.equal(evaluate('scrollPlaybackFailed'),true);assert.match(w.document.getElementById('open-hint').textContent,/TAP THE SCROLL TO RETRY/);
 w.revealScroll();assert.equal(JSON.parse(w.localStorage.getItem('swc2026-apac-lucky-draw.draw-state.v1')).log.length,1);
 video.dispatchEvent(new w.Event('ended'));assert.ok(w.document.getElementById('scr-result').classList.contains('active'));
 assert.equal(w.document.getElementById('scroll-whiteout').style.opacity,'1');
@@ -133,28 +133,24 @@ video.dispatchEvent(new w.Event('ended'));assert.equal(JSON.parse(w.localStorage
 assert.ok(Math.abs(evaluate('bgmEl.play.volume')-.4)<.001);
 console.log('PASS: idle loop audio follows mute switch; completed drag reaches the result without replaying the open clip');
 w.resetToIdle();assert.ok(w.document.getElementById('scr-idle').classList.contains('active'));
-// Figure win: the full-screen summon clip (with sound) runs before the result screen; participation goes straight there.
-const stage=w.document.getElementById('summon-stage'),summon=w.document.getElementById('summon-video');
-let summonPlays=0;summon.play=async()=>{summonPlays++;};
-evaluate("var cues=[];ScrollSound.has=n=>n==='summon';ScrollSound.cue=(n,o)=>{cues.push([n,o]);return true;}");
+// v5: a figure win goes straight to the full-screen AE win video (its own WIN intro); no legacy summon clip,
+// no purple flash/confetti, fanfare only. Participation keeps the card result.
+const stage=w.document.getElementById('summon-stage'),summon=w.document.getElementById('summon-video'),winVideo=w.document.getElementById('win-video');
+let summonPlays=0,winPlays=0;summon.play=async()=>{summonPlays++;};winVideo.play=async()=>{winPlays++;};
+evaluate("var sfx=[];playSfx=n=>sfx.push(n);");
+const confetti=w.document.getElementById('confetti'),confettiBefore=confetti.children.length;
 evaluate('stock={ip1:[1,0]}');w.document.getElementById('idle-banner').click();w.chooseScroll(0);w.openSelectedScroll();
 gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);
-assert.equal(summonPlays,1);assert.ok(stage.classList.contains('active'));assert.equal(summon.muted,true); // Web Audio carries the sound
-Object.defineProperty(summon,'currentTime',{value:.4,configurable:true});summon.dispatchEvent(new w.Event('playing'));
-assert.deepEqual(evaluate('JSON.stringify(cues)'),'[["summon",0.4]]');
-assert.ok(w.document.getElementById('scr-open').classList.contains('active'));assert.equal(w.document.getElementById('scroll-whiteout').style.opacity,'1');
-w.resetToIdle();assert.ok(w.document.getElementById('scr-open').classList.contains('active')); // ignored while the summon plays
-summon.dispatchEvent(new w.Event('ended'));
-assert.ok(w.document.getElementById('scr-result').classList.contains('active'));assert.equal(w.document.querySelector('#scr-result h2').textContent,'경품 당첨!');
-assert.ok(stage.classList.contains('fading'));w.resetToIdle();assert.equal(stage.classList.contains('active'),false);assert.equal(stage.classList.contains('fading'),false);
-// Without Web Audio the summon video's own track is unmuted instead.
-evaluate("ScrollSound.has=()=>false");evaluate('stock={ip1:[1,0]}');w.document.getElementById('idle-banner').click();w.chooseScroll(2);w.openSelectedScroll();
-gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);assert.equal(summon.muted,false);assert.equal(summonPlays,2);
-summon.dispatchEvent(new w.Event('ended'));w.resetToIdle();
+const result=w.document.getElementById('scr-result');
+assert.ok(result.classList.contains('active'));assert.ok(result.classList.contains('oap-win'));
+assert.equal(summonPlays,0);assert.equal(stage.classList.contains('active'),false);assert.equal(winPlays,1);
+assert.equal(confetti.children.length,confettiBefore);assert.ok(evaluate('sfx.includes("fanfare")'));
+assert.match(w.document.getElementById('win-staff').textContent,/^SHOW THIS SCREEN TO STAFFNo\. \d+ · \d\d:\d\d:\d\d$/);
+w.resetToIdle();assert.ok(w.document.getElementById('scr-idle').classList.contains('active'));
 evaluate('stock={ip1:[0,3]}');w.document.getElementById('idle-banner').click();w.chooseScroll(1);w.openSelectedScroll();
 gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);
-assert.equal(summonPlays,2);assert.ok(w.document.getElementById('scr-result').classList.contains('active'));assert.equal(stage.classList.contains('active'),false);
-console.log('PASS: figure win plays the summon clip before the result and cannot be interrupted; participation skips it');
+assert.ok(result.classList.contains('active'));assert.equal(result.classList.contains('oap-win'),false);assert.equal(winPlays,1);assert.equal(summonPlays,0);
+console.log('PASS: figure win shows the AE win video (no summon clip, no confetti, fanfare, staff serial); participation keeps the card result');
 // Single-track BGM: the chosen slot keeps looping across screen changes without restarts or volume resets; per-screen mode switches slots.
 const bgm=evaluate('bgmEl'),bgmCalls={};
 for(const k of ['idle','select','play']){bgmCalls[k]={play:0,pause:0};bgm[k].play=async()=>{bgmCalls[k].play++;Object.defineProperty(bgm[k],'paused',{value:false,configurable:true});};bgm[k].pause=()=>{bgmCalls[k].pause++;Object.defineProperty(bgm[k],'paused',{value:true,configurable:true});};}

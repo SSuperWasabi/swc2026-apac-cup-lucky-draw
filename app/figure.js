@@ -187,7 +187,8 @@ function finishScrollReveal(){
   openingAudioActive=false;
   ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();scrollWhiteout(1);clearTimeout(openingTimer);
   const epoch=figureEpoch;
-  if(lastResult&&lastResult.high)playSummon(epoch);else{showResult();startResultMedia();}
+  // v5: the AE win video carries its own WIN intro, so figure wins go straight to the result (no legacy summon clip).
+  showResult();startResultMedia();
   whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
 }
 scrollVideo().addEventListener('ended',()=>{if(drawing&&currentScreen==='scr-open')finishScrollReveal();});
@@ -195,16 +196,15 @@ scrollVideo().addEventListener('timeupdate',()=>{if(drawing&&currentScreen==='sc
 function scrollPlaybackError(){
   if(!drawing||currentScreen!=='scr-open')return;
   openingAudioActive=false;
-  ScrollSound.stop();scrollPlaybackFailed=true;const btn=document.getElementById('scroll-open-btn');btn.disabled=false;btn.setAttribute('aria-label','Replay the scroll video');
-  // The button is AE art now, so explain with the centred hint instead of relabelling it.
-  openBackdrop.hint.show('VIDEO STOPPED<br>TAP OPEN YOUR SCROLL TO RETRY');
+  ScrollSound.stop();scrollPlaybackFailed=true;
+  // No on-screen open button in the v3 layout: a tap on the scroll replays (see the drag handlers).
+  openBackdrop.hint.show('VIDEO STOPPED<br>TAP THE SCROLL TO RETRY');
 }
 scrollVideo().addEventListener('error',scrollPlaybackError);
 function playOpeningVideo(){
   const v=scrollVideo();scrollSeekTarget=null;scrollScrubbing=false;scrollPlaybackFailed=false;
   openingAudioActive=true;openingNativeAudio=!ScrollSound.has('open');
   ScrollSound.stop();scrollMix(true);unlockAudio();v.muted=openingNativeAudio?!!cfg.muted:true;v.volume=1;
-  document.getElementById('scroll-open-btn').disabled=true;
   v.playbackRate=AUTO_OPEN_RATE;v.preservesPitch=false;if("webkitPreservesPitch" in v)v.webkitPreservesPitch=false;
   v.loop=false;v.play().catch(scrollPlaybackError);
 }
@@ -221,6 +221,7 @@ go = function(id){
   if(id!=='scr-open'){openingAudioActive=false;cancelScrollWait();scrollPrimeEpoch++;scrollPrimeTask=null;}
   if(prevScreen==='scr-scrolls'&&id!=='scr-scrolls')chooseScreen.leave();
   if(prevScreen==='scr-open'&&id!=='scr-open')openBackdrop.leave();
+  if(prevScreen==='scr-result'&&id!=='scr-result')winScreen.stop();
   figureBase.go(id);if(id==='scr-idle')syncIdleTitleLayout();
   if(id==='scr-scrolls')chooseScreen.enter();
   if(id==='scr-open')openBackdrop.enter();
@@ -235,7 +236,7 @@ refreshIdleSoldout = function(){
   document.getElementById('scr-idle').classList.toggle('soldout',!state.ok);
   document.getElementById('idle-banner').textContent=state.ok?'TOUCH': '이벤트 준비 중 · 스태프에게 문의해주세요';
 }
-bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();if(currentScreen!=='scr-open')openBackdrop.prime();},1500);} // The idle screen shows the logo lockup only.
+bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();if(currentScreen!=='scr-open')openBackdrop.prime();if(currentScreen!=='scr-result')winScreen.prime();},1500);} // The idle screen shows the logo lockup only.
 function startFigureGame(){
   const state=figureAvailable();if(!state.ok){toast(state.reason);return;}
   selectedScroll=null;
@@ -249,6 +250,10 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
 // The grid is built once; re-rendering would restart the card entrance animation.
 const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
 const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
+const winScreen=new WinScreen(document.getElementById('win-stage'));
+// On the AE win video the purple flash/bolts/confetti would sit on top of the design: keep only the fanfare.
+const baseSpecialFx=specialFx;
+specialFx=function(){if(document.getElementById('scr-result').classList.contains('oap-win')){playSfx('fanfare');return;}baseSpecialFx();};
 window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
 function renderScrollSelection(){
@@ -265,8 +270,7 @@ function openSelectedScroll(){
   if(selectedScroll==null){if(currentScreen==='scr-scrolls')chooseScreen.showHint('PLEASE SELECT<br>A SCROLL FIRST');return;}
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}
   drawing=false;setScrollProgress(0);document.getElementById('scr-open').classList.remove('opening');
-  document.getElementById('scroll-open-btn').disabled=false;
-  document.getElementById('scroll-open-btn').setAttribute('aria-label','Open the scroll automatically');scrollPlaybackFailed=false;
+  scrollPlaybackFailed=false;
   document.getElementById('open-back').disabled=false;
   document.getElementById('open-number').textContent=`${selectedScroll+1}번 소환서`;
   summonUnlock();startBgm('play');go('scr-open');
@@ -305,7 +309,7 @@ function commitFigureDraw(){
 }
 function commitScrollDraw(){
   try{commitFigureDraw();}catch(error){setScrollProgress(0);startScrollLoop();toast('추첨을 진행하지 못했습니다: '+error.message);return false;}
-  drawing=true;clearTimeout(idleTimer);document.getElementById('scroll-open-btn').disabled=true;document.getElementById('open-back').disabled=true;
+  drawing=true;clearTimeout(idleTimer);document.getElementById('open-back').disabled=true;
   document.getElementById('scr-open').classList.add('opening');return true;
 }
 // Automatic open (button / keyboard): play the whole clip and finish on `ended`.
@@ -327,7 +331,8 @@ function completeScrollDrag(){
 // Progressive left-to-right drag; incomplete and cancelled gestures never draw.
 (()=>{
   const el=document.getElementById('scroll-drag');let pointer=null,startX=0;
-  el.addEventListener('pointerdown',e=>{if(drawing||pointer!==null||e.button>0)return;if(!beginScrollScrub())return;pointer=e.pointerId;startX=e.clientX;el.setPointerCapture(pointer);});
+  el.addEventListener('pointerdown',e=>{if(drawing&&scrollPlaybackFailed){revealScroll();return;} // tap to retry a stalled opening
+    if(drawing||pointer!==null||e.button>0)return;if(!beginScrollScrub())return;pointer=e.pointerId;startX=e.clientX;el.setPointerCapture(pointer);});
   el.addEventListener('pointermove',e=>{if(e.pointerId!==pointer||drawing)return;setScrollProgress(Math.max(0,Math.min(1,(e.clientX-startX)/Math.max(1,el.clientWidth*.65))));manageIdle();});
   el.addEventListener('pointerup',e=>{if(e.pointerId!==pointer)return;const p=Number(el.style.getPropertyValue('--progress'));pointer=null;if(p>=.98)completeScrollDrag();else{setScrollProgress(0);startScrollLoop();}});
   const cancel=()=>{pointer=null;if(!drawing){setScrollProgress(0);startScrollLoop();}};el.addEventListener('pointercancel',cancel);el.addEventListener('lostpointercapture',cancel);
@@ -344,6 +349,10 @@ renderResult = function(){
   if(!(lastResult.wonImageKey||lastResult.prize.imageKey)&&lastResult.high){document.getElementById('rc-img').innerHTML='<span role="img" aria-label="경품 이미지 미등록">🎁</span>';}
   clearInterval(resultTick);resultTick=setInterval(updateResultCountdown,200);
   const key=reusableResultKey(lastResult);if(key)resultLoop.show(key);
+  // Figure win: full-screen AE win video with a small staff check (serial and time).
+  const win=!!lastResult.high;document.getElementById('scr-result').classList.toggle('oap-win',win);
+  if(win){const t=new Date(),hms=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+   document.getElementById('win-staff').innerHTML=`<b>SHOW THIS SCREEN TO STAFF</b><span>No. ${lastResult.serial} · ${hms}</span>`;winScreen.play();}
 }
 function updateResultCountdown(){const e=document.getElementById('result-countdown');if(e)e.textContent=figurePopup?'영상 재생 중':`${Math.max(0,Math.ceil((resultDeadline-Date.now())/1000))}초 후 처음으로 돌아갑니다`;}
 async function figureMediaUrl(key,epoch=figureEpoch){
