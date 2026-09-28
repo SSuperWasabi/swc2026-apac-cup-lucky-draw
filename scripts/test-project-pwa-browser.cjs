@@ -18,6 +18,9 @@ if(!target||new URL(target).protocol!=='https:')throw Error('Pass the deployed H
   const page=await context.newPage();
   await page.goto(target,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>navigator.serviceWorker.controller&&typeof APP_VER!=='undefined'&&typeof idb!=='undefined'&&idb,null,{timeout:90000});
+  // The first visit reloads once when the new worker takes control (controllerchange); let that settle.
+  await page.waitForTimeout(3000);await page.waitForLoadState('load');
+  await page.waitForFunction(()=>navigator.serviceWorker.controller&&typeof APP_VER!=='undefined'&&typeof idb!=='undefined'&&idb,null,{timeout:90000});
   const state=await page.evaluate(async()=>({
    version:APP_VER,eventName:cfg.eventName,stock,logs:logArr.length,db:idb.name,
    manifest:await(await fetch('manifest.webmanifest')).json(),caches:await caches.keys(),
