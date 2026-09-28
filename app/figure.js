@@ -258,7 +258,7 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
 // The grid is built once; re-rendering would restart the card entrance animation.
 const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
 const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
-const winScreen=new WinScreen(document.getElementById('win-stage'));
+const winScreen=new WinScreen(document.getElementById('win-stage'),()=>resetToIdle());
 // On the AE win video the purple flash/bolts/confetti would sit on top of the design: keep only the fanfare.
 const baseSpecialFx=specialFx;
 specialFx=function(){if(document.getElementById('scr-result').classList.contains('oap-win')){playSfx('fanfare');return;}baseSpecialFx();};
@@ -296,7 +296,9 @@ manageIdle = function(){
   if(drawing&&currentScreen==='scr-open')return;
   if(currentScreen==='scr-result'){
     if(figurePopup)return;
-    resultDeadline=Date.now()+5000;idleTimer=setTimeout(resetToIdle,5000);updateResultCountdown();
+    // Win screen: 7 s (tap returns earlier once the entrance is done); participation keeps 5 s.
+    const ms=document.getElementById('scr-result').classList.contains('oap-win')?7000:5000;
+    resultDeadline=Date.now()+ms;idleTimer=setTimeout(resetToIdle,ms);updateResultCountdown();
   }else if(['scr-scrolls','scr-open','scr-ip','scr-lineup'].includes(currentScreen)){
     idleTimer=setTimeout(resetToIdle,Math.max(3,cfg.idleTimeoutSec||30)*1000);
   }

@@ -165,9 +165,13 @@ class OpenBackdrop {
 // WIN PRIZE (OAP v5): the prize video is an AE pre-render (one per prize); it plays once from
 // frame 0 when the result shows and holds its last frame. Parked at 0 while hidden.
 class WinScreen {
-  constructor(stage) {
+  constructor(stage, onHome) {
     this.video = stage.querySelector('#win-video');
     this.active = false;
+    // Taps return home only once the AE entrance is complete (last entrance key: frame opacity at 2.5 s),
+    // measured on the video clock so a stalled video never exits early.
+    this.entranceEnd = 2.5;
+    stage.addEventListener('click', () => { if (this.active && this.video.currentTime >= this.entranceEnd) onHome(); });
   }
 
   rewind() {

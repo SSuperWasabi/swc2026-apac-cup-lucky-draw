@@ -29,7 +29,7 @@ const server=http.createServer((req,res)=>{
    // Video position when the result screen becomes active (the white lifts right after).
    new MutationObserver(()=>{const r=document.getElementById('scr-result');if(r.classList.contains('active')&&window.__winAtEntry===undefined)window.__winAtEntry=document.getElementById('win-video').currentTime;}).observe(document.getElementById('scr-result'),{attributes:true,attributeFilter:['class']});});
   // One full journey: start -> choose -> automatic open -> cinematic clip -> v5 win video -> 5 s home.
-  const win=async label=>{
+  const win=async(label,exit)=>{
    await page.evaluate(()=>{stock={ip1:[1,0]};refreshIdleSoldout();window.__winAtEntry=undefined;});
    await page.locator('#idle-banner').click();
    await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
@@ -41,7 +41,8 @@ const server=http.createServer((req,res)=>{
    await page.waitForFunction(()=>!document.getElementById('summon-video').paused&&document.getElementById('summon-video').currentTime>0.3,null,{timeout:10000});
    await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
    const entered=Date.now();
-   await page.waitForTimeout(3200); // staff check fades in 2.4-2.8 s
+   if(exit==='idle'){await page.waitForTimeout(500);await page.mouse.click(512,700);assert.equal(await page.evaluate(()=>currentScreen),'scr-result','a tap during the entrance (<2.5 s) is ignored');await page.waitForTimeout(2700);}
+   else await page.waitForTimeout(3200); // staff check fades in 2.4-2.8 s
    const s=await page.evaluate(()=>{const v=document.getElementById('win-video');return {win:document.getElementById('scr-result').classList.contains('oap-win'),playing:!v.paused,ready:v.readyState,frame:v.videoWidth,
     atEntry:window.__winAtEntry,t:v.currentTime,staff:document.getElementById('win-staff').textContent,staffOpacity:getComputedStyle(document.getElementById('win-staff')).opacity,
     confetti:window.__confetti,log:logArr.at(-1),stock:JSON.stringify(stock),cover:(()=>{const r=document.getElementById('win-stage').getBoundingClientRect();return [r.width,r.height];})()};});
@@ -51,21 +52,23 @@ const server=http.createServer((req,res)=>{
    assert.deepEqual(s.cover,[1024,1366]);assert.equal(s.log.kind,'figure');assert.equal(s.stock,'{"ip1":[0,0]}');
    assert.match(s.staff,new RegExp(`^SHOW THIS SCREEN TO STAFFNo\\. ${s.log.serial} · \\d\\d:\\d\\d:\\d\\d$`));assert.equal(s.staffOpacity,'1');
    await page.screenshot({path:`.tools/win-v5-${label}.png`});
-   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:8000});
-   const back=(Date.now()-entered)/1000;assert.ok(back>4.5&&back<6,`five-second return (${back}s)`);
+   if(exit==='tap'){const t=Date.now();await page.mouse.click(512,700);await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:1500});assert.ok(Date.now()-t<1000,'tap after the entrance returns home at once');}
+   else await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+   const back=(Date.now()-entered)/1000;
+   if(exit==='idle')assert.ok(back>6.5&&back<7.8,`seven-second return on the win screen (${back}s)`);
    const after=await page.evaluate(()=>({paused:document.getElementById('win-video').paused,t:document.getElementById('win-video').currentTime,src:document.getElementById('win-video').getAttribute('src'),summonSrc:document.getElementById('summon-video').getAttribute('src')}));
    assert.deepEqual({paused:after.paused,t:after.t},{paused:true,t:0});assert.ok(after.src,'win video source kept for the next winner');
    return {clip,atEntry:s.atEntry,serial:s.log.serial,back,summonSrcAfter:after.summonSrc};
   };
-  const a=await win('bundled');
+  const a=await win('bundled','idle');
   assert.equal(a.clip.blob&&!a.clip.src.startsWith('blob:'),false);
-  console.log('PASS: win 1 (bundled Zeratu cinematic) -> v5 win video from t=%s s, staff No. %s, home after %s s',a.atEntry.toFixed(3),a.serial,a.back.toFixed(1));
+  console.log('PASS: win 1 (bundled Zeratu cinematic) -> v5 win video from t=%s s, staff No. %s, home after %s s (early tap ignored, 7 s idle return)',a.atEntry.toFixed(3),a.serial,a.back.toFixed(1));
   // Register a prize clip (admin 상품 영상): it replaces the bundled cinematic; the v5 video must still play on this second win.
   await page.evaluate(async()=>{const buf=await(await fetch('assets/figure/sacred-idle.mp4')).arrayBuffer();await idbPut('prize_clip_test',{buf,type:'video/mp4'});cfg.ips[0].prizes[0].videoKey='prize_clip_test';});
-  const b=await win('registered');
+  const b=await win('registered','tap');
   assert.equal(b.clip.blob,true,'registered clip plays as the cinematic');
   assert.ok(!b.summonSrcAfter.startsWith('blob:')||b.summonSrcAfter!==b.clip.src,'bundled cinematic source restored after a registered clip');
-  console.log('PASS: win 2 (registered prize clip) -> v5 win video still plays (t=%s s at entry), staff No. %s; bundled clip source restored',b.atEntry.toFixed(3),b.serial);
+  console.log('PASS: win 2 (registered prize clip) -> v5 win video still plays (t=%s s at entry), staff No. %s; tap after the entrance returned home at %s s; bundled clip source restored',b.atEntry.toFixed(3),b.serial,b.back.toFixed(1));
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
