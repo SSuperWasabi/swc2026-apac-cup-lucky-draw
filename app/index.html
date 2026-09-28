@@ -481,23 +481,25 @@
       <button class="choose-random choose-anim" id="scroll-random" onclick="randomScroll()" aria-label="랜덤 선택"><img src="assets/oap/choose/random.webp" alt="" draggable="false"><span class="btn-shine"></span></button>
       <button class="choose-select choose-anim" id="scroll-next" onclick="openSelectedScroll()" aria-disabled="true" aria-label="소환서 열기"><span class="btn-glow"></span><img src="assets/oap/choose/select.webp" alt="" draggable="false"><span class="btn-shine"></span></button>
       <button class="back choose-back" onclick="resetToIdle()" aria-label="처음으로"><span aria-hidden="true">←</span>HOME</button>
+      <div class="choose-hint" id="choose-hint" role="status" aria-live="assertive"></div>
       <span id="scroll-status" class="choose-sr" aria-live="polite"></span>
     </div>
   </div>
-  <div class="screen figure-screen" id="scr-open">
-    <div class="topbar"><button class="back" id="open-back" onclick="backFromScroll()" aria-label="소환서 다시 선택">←</button><div class="title">소환서를 펼쳐주세요<span id="open-number" class="open-number"></span></div></div>
-    <div class="scroll-theatre">
-      <div class="summon-ring"></div>
-      <div class="scroll-drag" id="scroll-drag" role="button" tabindex="0" aria-label="왼쪽에서 오른쪽으로 드래그해 소환서 열기. Enter 키로도 열 수 있습니다.">
+  <!-- OAP v3 OPEN YOUR SCROLL: AE frame loop (titles, logo, emblem, SLIDE bar) + scroll clips in the 1768 slot; drag UI in the AE-reserved area (docs/oap-spec/open-v3) -->
+  <div class="screen oap-open" id="scr-open">
+    <div class="open-stage" id="open-stage">
+      <video id="open-frame-video" class="open-frame" src="assets/oap/open/open-frame-loop.mp4" muted playsinline loop preload="auto" disablepictureinpicture></video>
+      <div class="scroll-drag" id="scroll-drag" role="button" tabindex="0" aria-label="Drag from left to right to open the scroll. Enter also opens it.">
         <img class="scroll-fallback" src="assets/figure/sacred-poster.jpg" alt="" aria-hidden="true">
         <video id="scroll-idle-video" class="scroll-loop-video" src="assets/figure/sacred-idle.mp4" poster="assets/figure/sacred-poster.jpg" loop playsinline preload="auto" aria-hidden="true"></video>
         <video id="scroll-video" class="scroll-loop-video" src="assets/figure/sacred-open.mp4" muted playsinline preload="auto" aria-hidden="true"></video>
         <div class="drag-hint" aria-hidden="true"><div class="drag-track"><span class="drag-rail"></span><span class="drag-chevron-lane"><i class="drag-chevron" style="--i:0"></i><i class="drag-chevron" style="--i:1"></i><i class="drag-chevron" style="--i:2"></i><i class="drag-chevron" style="--i:3"></i><i class="drag-chevron" style="--i:4"></i><i class="drag-chevron" style="--i:5"></i><i class="drag-chevron" style="--i:6"></i><i class="drag-chevron" style="--i:7"></i><i class="drag-chevron" style="--i:8"></i><i class="drag-chevron" style="--i:9"></i></span><span class="drag-handle"><span class="drag-grip-dots"><i></i><i></i><i></i></span><span class="drag-handle-arrows"><i></i><i></i></span></span></div></div>
       </div>
-      <div class="summon-particles" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i><i style="--i:14"></i><i style="--i:15"></i><i style="--i:16"></i><i style="--i:17"></i><i style="--i:18"></i><i style="--i:19"></i><i style="--i:20"></i><i style="--i:21"></i><i style="--i:22"></i><i style="--i:23"></i><i style="--i:24"></i><i style="--i:25"></i><i style="--i:26"></i><i style="--i:27"></i><i style="--i:28"></i><i style="--i:29"></i><i style="--i:30"></i><i style="--i:31"></i></div><div class="summon-flash"></div>
+      <button class="open-auto" id="scroll-open-btn" onclick="revealScroll()" aria-label="Open the scroll automatically"><img src="assets/oap/open/open-button.webp" alt="" draggable="false"><span class="btn-shine"></span></button>
+      <button class="back choose-back open-back" id="open-back" onclick="backFromScroll()" aria-label="소환서 다시 선택"><span aria-hidden="true">←</span>BACK</button>
+      <div class="choose-hint" id="open-hint" role="status" aria-live="assertive"></div>
+      <span id="open-number" class="choose-sr"></span>
     </div>
-    <div class="drag-guide">스크롤을 오른쪽으로 밀거나 자동 오픈 버튼을 클릭하세요</div>
-    <button class="btn btn-yellow" id="scroll-open-btn" onclick="revealScroll()">소환서 자동 오픈</button>
   </div>
 
   <!-- S9 관리자 -->
@@ -549,7 +551,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v3';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v4';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){

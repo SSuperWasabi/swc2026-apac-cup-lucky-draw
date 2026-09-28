@@ -162,3 +162,26 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
 - 뒤로 버튼: `← HOME`(첫 화면으로 가므로 BACK 대신 HOME). Unbounded Bold(SIL OFL) 포함.
 - 미선택 SELECT 안내 방식은 사용자 확정.
 - 상세: `docs/oap-spec/choose-v8/README.md` "AE에 없는 앱 상태 표현".
+
+## 10. 오픈 화면 v3 적용과 사용자 확인 — 2026-09-28 (swc-apac-v4)
+
+### 사용자 확인·결정
+
+- 선택 화면 v3의 선택 카드 가시성, HOME 버튼, 나머지 카드 어둡게, 버튼 강조 효과는 확인 완료.
+- 선택 전 SELECT 안내: 영어로, 화면 정중앙에 크게, 1.5초 표시, 화면을 누르면 즉시 사라짐 → `PLEASE SELECT / A SCROLL FIRST` 적용.
+- 메인 타이틀 화면 글꼴을 모두 Unbounded 계열로 교체. 가변 글꼴 1개(777KB, SIL OFL)로 모든 굵기를 쓴다. "LUCKY DRAW"가 Unbounded에서 약 8em 폭이라 최대 105px로 줄였다.
+- **전환 영상 정정:** 세로판은 회사 PC에서 작업했다. `swc2026_oap(변환됨)_Astra revised_260922.aep`에도 전환은 가로 `01_Transition`(1920×1080)뿐이다. 렌더 대기열 기록과 `C:\Users\jasonbae\Downloads\2026-09-22\adobe-plugin-app-…-openai-curated\` 작업 폴더로 보아, 세로판은 AE에서 렌더한 가로 MP4를 ffmpeg로 세로 재구성한 결과물이다(알파 없음). 알파가 있는 원본은 `(Footage)/@TRANS_ASIA/TRANS_ASIA_00006~00064.png`이므로 같은 재구성을 이 시퀀스에 적용하는 방식이 유력하다. 재구성 규칙은 아직 분석하지 않았다.
+
+### 오픈 화면 v3
+
+- AE `FRAME_V3`를 렌더해 프레임 반복 영상(152프레임)을 만들었다. 영상 칸은 모든 프레임에서 검정이고 엠블럼과 겹치지 않는다.
+- 앱의 `sacred-idle/open.mp4`가 AE 소스와 동일하므로 드래그·자동 오픈·오디오 로직은 그대로 두고 배치와 색만 바꿨다.
+- 자동 오픈은 AE `OPEN YOUR SCROLL` 버튼 아트를 하단 빈 띠에 78.4%로, 뒤로는 `← BACK`(선택 화면으로 돌아가므로 HOME이 아닌 BACK). 재생 실패 시 버튼 글자 대신 중앙 안내.
+- 명세·검증: `docs/oap-spec/open-v3/`, `scripts/test-open-browser.cjs`.
+- 선택 화면 간헐 실패 원인: 재진입 시 첫 프레임 콜백이 0.15초 늦게 와서 카드가 영상보다 늦게 시작했다. CSS 타임라인을 늦은 만큼 앞당기도록 보정했다(iPad에서도 유효한 수정).
+
+### 다음 단계
+
+1. iPad에서 v4 확인: 선택·오픈 화면 영상 동시 디코딩 부하, 자동 오픈 버튼 위치 승인
+2. 당첨 v5(제라투) 사전 렌더 영상 적용
+3. 전환: `TRANS_ASIA` 알파 시퀀스에 세로 재구성 적용 + iPad 알파 재생 방식 결정

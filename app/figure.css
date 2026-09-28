@@ -139,7 +139,7 @@
 .choose-select{left:calc(100%*116/2048);top:calc(100%*2352.5/2732);width:calc(100%*1818/2048);height:calc(100%*255/2732)}
 /* Entrance: linear opacity (and 40 master px rise for cards), started on the intro's first frame. */
 .choose-anim{opacity:0}
-.choose-stage.is-playing .choose-anim{animation:choose-fade .45s linear var(--delay,0s) both}
+.choose-stage.is-playing .choose-anim{animation:choose-fade .45s linear calc(var(--delay,0s) + var(--sync,0s)) both}
 .choose-stage.is-playing .choose-rise{animation-name:choose-rise}
 .choose-random{--delay:.3s}.choose-select{--delay:.9s}
 @keyframes choose-fade{from{opacity:0}to{opacity:1}}
@@ -177,6 +177,42 @@
 .choose-back{pointer-events:auto;position:absolute;z-index:4;left:1.8cqw;top:1.3cqh;height:3.6cqh;min-height:40px;padding:0 2.2cqw 0 1.7cqw;display:flex;align-items:center;gap:.9cqw;border-radius:999px;border:1px solid #ffffff8c;background:#3a1d0066;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font:700 max(14px,1.95cqw)/1 'Unbounded','Pretendard',sans-serif;letter-spacing:.04em;box-shadow:0 .3cqw 1cqw #0003}
 .choose-back span{font-size:1.15em;line-height:1}
 .choose-back:active{transform:scale(.96)}
-@font-face{font-family:'Unbounded';src:url(assets/fonts/Unbounded-Bold.ttf) format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'Unbounded';src:url(assets/fonts/Unbounded-Variable.ttf) format('truetype');font-weight:200 900;font-display:swap} /* variable wght, SIL OFL */
 .choose-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(prefers-reduced-motion:reduce){.choose-stage.is-playing .choose-anim{animation-duration:.01s}#scr-scrolls .card-glow,#scr-scrolls .card-shine::before,#scr-scrolls .card-glitter i,.btn-shine::before,.choose-select .btn-glow{animation:none}#scr-scrolls .card-glitter i{opacity:.8;transform:scale(.8)}}
+
+/* Centred hint (e.g. SELECT without a card): visible 1.5 s or until the next tap; taps pass through. */
+.choose-hint{position:absolute;z-index:6;left:50%;top:50%;min-width:62%;padding:3.2cqw 5cqw;translate:-50% -50%;scale:.92;opacity:0;pointer-events:none;text-align:center;color:#fff;font:800 3.6cqw/1.25 'Unbounded',sans-serif;letter-spacing:.02em;background:#2b1300e0;border:.4cqw solid #ffe27a;border-radius:2.4cqw;box-shadow:0 0 0 .5cqw #b5540088,0 0 4cqw #ffd54a88,0 1.2cqw 3cqw #0008;transition:opacity .16s ease-out,scale .16s ease-out}
+.choose-hint.is-visible{opacity:1;scale:1}
+/* Main title screen typography: Unbounded (variable) across the screen, Korean falls back. */
+#scr-idle{font-family:'Unbounded',var(--font-sans)}
+#scr-idle .idle-headline{font-weight:900;letter-spacing:-.01em}
+#scr-idle .touch-banner{font-weight:800;letter-spacing:.04em}
+#scr-idle .copyright,#scr-idle .idle-credit,#scr-idle #idle-version{font-weight:500}
+/* Unbounded runs ~8 em wide for "LUCKY DRAW": cap it at ~88% of the viewport. */
+#scr-idle .idle-headline .ld-2{font-size:min(10.3vw,8vh,105px)}
+@media(min-aspect-ratio:1/1){#scr-idle .idle-headline .ld-2{font-size:min(7vw,8vh)}}
+/* OAP v3 OPEN YOUR SCROLL — AE frame loop + scroll clips in the 1768 slot (master 2048x2732,
+   exact master-pixel fractions). Drag behaviour is unchanged; only placement and colours. */
+#scr-open{animation:none;align-items:center;justify-content:center;background:linear-gradient(#fff799,#ffc309)}
+.open-stage{position:relative;width:min(100%,calc(100dvh*2048/2732));aspect-ratio:2048/2732;container-type:size;overflow:hidden;background:#ffd23a}
+.open-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}
+#scr-open .scroll-drag{position:absolute;left:calc(100%*140/2048);top:calc(100%*595/2732);width:calc(100%*1768/2048);height:calc(100%*1768/2732);aspect-ratio:auto;flex:none;padding:0;border:0;border-radius:0;background:#000;box-shadow:none;z-index:2}
+#scr-open .scroll-loop-video,#scr-open .scroll-fallback{inset:0;width:100%;height:100%;border-radius:0;object-fit:cover}
+/* Drag guide in the AE-reserved area (284,2175 1480x150), expressed within the slot. */
+#scr-open #scroll-drag .drag-hint{left:calc(100%*144/1768);top:calc(100%*1580/1768);bottom:auto;width:calc(100%*1480/1768);height:calc(100%*150/1768);padding:0;border-radius:999px;background:none;opacity:.92}
+#scr-open .drag-track{--handle-width:19%;width:100%;height:100%;border:2px solid #ffd463;border-radius:999px;background:linear-gradient(90deg,#3a1d00e6,#5b2f14d9);box-shadow:inset 0 1px 2px #ffffff26,0 .6cqw 1.8cqw #0006}
+#scr-open .drag-handle{top:4px;height:calc(100% - 8px);border:2px solid #fff6cc;background:linear-gradient(180deg,#fff3b8 0%,#ffd24d 50%,#f2a800 100%);box-shadow:inset 0 2px 3px #ffffff80,0 3px 10px #0007,0 0 12px #ffd46366}
+#scr-open .drag-grip-dots i{background:#6b3a07;box-shadow:none}
+#scr-open .drag-handle-arrows i{background:linear-gradient(135deg,#8a4a0c,#5b2f14)}
+/* Automatic open: AE "OPEN YOUR SCROLL" button art at 78.4% in the empty band under the SLIDE bar. */
+.open-auto{position:absolute;z-index:3;left:calc(100%*311.059/2048);top:calc(100%*2507.5/2732);width:calc(100%*1425.882/2048);height:calc(100%*200/2732);padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.open-auto img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;transition:transform .09s ease-out}
+.open-auto .btn-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;-webkit-mask:url(assets/oap/open/open-button.webp) 0 0/100% 100%;mask:url(assets/oap/open/open-button.webp) 0 0/100% 100%}
+#scr-open.active .open-auto .btn-shine::before{animation:btn-sweep 2.8s ease-in-out .4s infinite}
+.open-auto:active img,.open-auto:active .btn-shine{transform:scale(.965)}
+.open-auto:disabled{cursor:default}
+#scr-open.opening .open-auto .btn-shine::before{animation:none}
+@media(prefers-reduced-motion:reduce){#scr-open .open-auto .btn-shine::before{animation:none}}
+/* On the open frame's white corner the translucent pill turns grey; use the SLIDE bar brown. */
+.open-back{background:#5b2f14eb;border-color:#ffd46399;-webkit-backdrop-filter:none;backdrop-filter:none}

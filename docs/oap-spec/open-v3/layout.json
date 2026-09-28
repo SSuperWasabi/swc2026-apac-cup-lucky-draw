@@ -1,0 +1,64 @@
+{
+  "source": {
+    "aep": "swc2026_OPEN_YOUR_SCROLL_iPad_v3_260923.aep",
+    "comps": [
+      "04_Caster_Cam2_OPEN_SCROLL_IPAD_IDLE_V3",
+      "04_Caster_Cam2_OPEN_SCROLL_IPAD_FRAME_V3",
+      "04_Caster_Cam2_OPEN_SCROLL_IPAD_OPEN_V3"
+    ],
+    "extractedAt": "Sun Sep 27 2026 17:17:29 GMT+0900",
+    "aeVersion": "26.5x89"
+  },
+  "canvas": {
+    "width": 2048,
+    "height": 2732,
+    "fps": 30
+  },
+  "coordinateSystem": "Top-left boxes in 2048x2732 master px.",
+  "frameLoop": {
+    "file": "open-frame-loop.mp4",
+    "frames": 152,
+    "seconds": 5.067,
+    "note": "FRAME_V3 render: titles, logo, emblem, SLIDE bar baked; slot is pure black in every frame"
+  },
+  "videoSlot": {
+    "left": 140,
+    "top": 595,
+    "width": 1768,
+    "height": 1768,
+    "sourceSize": [
+      720,
+      720
+    ],
+    "scale": 2.456,
+    "idleClip": "sacred-idle.mp4 (loops 101/30 s)",
+    "openClip": "sacred-open.mp4 (drag progress -> source time)"
+  },
+  "instructionBar": {
+    "left": 140,
+    "top": 2363,
+    "width": 1768,
+    "height": 120,
+    "text": "SLIDE TO OPEN THE SCROLL",
+    "baked": true
+  },
+  "dragGuide": {
+    "left": 284,
+    "top": 2175,
+    "width": 1480,
+    "height": 150,
+    "source": "AE reserved area (futureDragGuide)"
+  },
+  "autoOpenButton": {
+    "left": 311.059,
+    "top": 2507.5,
+    "width": 1425.882,
+    "height": 200,
+    "scale": 0.784,
+    "asset": "open-button.webp"
+  },
+  "backButton": {
+    "label": "← BACK",
+    "note": "App control above the emblem, same style as the choose screen HOME pill"
+  }
+}

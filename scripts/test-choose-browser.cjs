@@ -43,8 +43,10 @@ const state=page=>page.evaluate(()=>{
   let s=await state(page);assert.equal(s.screen,'scr-scrolls');assert.ok(!s.classes.includes('is-interactive'));
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
   const entry=(await page.evaluate(()=>window.__entrance))[0];
-  assert.ok(entry.t<0.1,`entrance must start at the intro's first frame (intro t=${entry.t})`);
-  const gap=entry.interactiveAt-entry.at;assert.ok(gap>1400&&gap<1700,`input opens ~1.435 s after entrance start (${gap.toFixed(0)} ms)`);
+  // A late frame callback is fine if the CSS timeline is shifted back by the same amount.
+  const lag1=await page.evaluate(()=>chooseScreenDiagnostics.lastLag);
+  assert.ok(entry.t<0.4&&Math.abs(entry.t-lag1)<0.05,`entrance on the video clock (intro t=${entry.t}, compensated ${lag1})`);
+  const gap=entry.interactiveAt-entry.at+lag1*1000;assert.ok(gap>1400&&gap<1700,`input opens ~1.435 s of video time after the intro starts (${gap.toFixed(0)} ms)`);
   s=await state(page);assert.equal(s.diag.synced,1);assert.equal(s.diag.fallback,0);
   console.log('PASS: entrance synced to intro first frame (intro t=%s s), input after %s ms',entry.t.toFixed(3),gap.toFixed(0));
 
@@ -118,7 +120,7 @@ const state=page=>page.evaluate(()=>{
   // 6) Re-entry replays the intro from its start; back button returns home.
   await page.evaluate(()=>backFromScroll());
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
-  const entries=await page.evaluate(()=>window.__entrance);assert.equal(entries.length,2);assert.ok(entries[1].t<0.1,`re-entry intro t=${entries[1].t}`);
+  const entries=await page.evaluate(()=>window.__entrance);assert.equal(entries.length,2);const lag2=await page.evaluate(()=>chooseScreenDiagnostics.lastLag);assert.ok(entries[1].t<0.4&&Math.abs(entries[1].t-lag2)<0.05,`re-entry on the video clock (intro t=${entries[1].t}, compensated ${lag2})`);
   s=await state(page);assert.equal(s.diag.synced,2);assert.ok(!s.classes.includes('loop-front'));
   await page.locator('#scr-scrolls .back').click();
   s=await state(page);assert.equal(s.screen,'scr-idle');assert.equal(s.introPaused,true);assert.equal(s.loopPaused,true);

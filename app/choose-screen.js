@@ -2,6 +2,28 @@
    Background: AE-rendered intro (2 s, once) then loop (4 s). Only the 12 cards and the
    two buttons are app elements; their entrance timing comes from docs/oap-spec/choose-v8.
    Card entrance CSS starts on the intro's first presented frame so both stay in sync. */
+// Centred stage message: visible 1.5 s or until the next tap anywhere (the tap still reaches
+// what is underneath). Shared by the choose and open screens.
+class StageHint {
+  constructor(el) {
+    this.el = el;
+    this.timer = null;
+    document.addEventListener('pointerdown', () => this.hide(), true);
+  }
+
+  show(html) {
+    clearTimeout(this.timer);
+    this.el.innerHTML = html;
+    this.el.classList.add('is-visible');
+    this.timer = setTimeout(() => this.hide(), 1500);
+  }
+
+  hide() {
+    clearTimeout(this.timer);
+    this.el.classList.remove('is-visible');
+  }
+}
+
 class ChooseScreen {
   constructor(stage) {
     this.stage = stage;
@@ -12,7 +34,12 @@ class ChooseScreen {
     this.fallbackTimer = null;
     this.diagnostics = { entries: 0, synced: 0, fallback: 0, loopSwaps: 0 };
     this.intro.addEventListener('ended', () => this.swapToLoop(this.epoch));
+    this.hint = new StageHint(stage.querySelector('#choose-hint'));
   }
+
+  showHint(html) { this.hint.show(html); }
+
+  hideHint() { this.hint.hide(); }
 
   // Muted inline playback is allowed without a gesture; decode the first frames early
   // so the first entry does not wait on the decoder, then park both at frame 0.
@@ -52,9 +79,14 @@ class ChooseScreen {
     if (epoch !== this.epoch || this.stage.classList.contains('is-playing')) return;
     clearTimeout(this.fallbackTimer);
     this.diagnostics[synced ? 'synced' : 'fallback']++;
+    // The frame callback can arrive late under load; shift the CSS timeline back by however far
+    // the intro has already played so the cards stay on the video clock.
+    const lag = synced ? Math.max(0, Math.min(this.intro.currentTime || 0, 1)) : 0;
+    this.stage.style.setProperty('--sync', (-lag).toFixed(3) + 's');
+    this.diagnostics.lastLag = lag;
     this.stage.classList.add('is-playing');
     // Input opens when the last entrance (scroll 12) finishes: 0.985 + 0.45 s.
-    this.inputTimer = setTimeout(() => { if (epoch === this.epoch) this.stage.classList.add('is-interactive'); }, 1435);
+    this.inputTimer = setTimeout(() => { if (epoch === this.epoch) this.stage.classList.add('is-interactive'); }, Math.max(0, 1435 - lag * 1000));
   }
 
   swapToLoop(epoch) {
@@ -66,6 +98,7 @@ class ChooseScreen {
 
   leave() {
     this.epoch++;
+    this.hideHint();
     this.resetState();
     for (const v of [this.intro, this.loop]) { v.pause(); this.rewind(v); }
   }
@@ -101,4 +134,30 @@ function buildChooseGrid(grid, onChoose) {
     return `<button class="scroll-choice choose-anim choose-rise" style="left:calc(100%*${c.left}/2048);top:calc(100%*${c.top}/2732);--delay:${c.delay.toFixed(3)}s" aria-label="${i + 1}번 소환서 선택" aria-pressed="false" data-index="${i}"><span class="card-lift"><img src="assets/oap/choose/scroll-${n}.webp" alt="" draggable="false"><span class="card-shine"></span></span><span class="card-glow"></span><span class="card-glitter">${CHOOSE_GLITTER}</span></button>`;
   }).join('');
   grid.querySelectorAll('.scroll-choice').forEach(b => b.addEventListener('click', () => onChoose(Number(b.dataset.index))));
+}
+
+// OPEN YOUR SCROLL (OAP v3) backdrop: the AE frame loop only plays while the screen is shown.
+class OpenBackdrop {
+  constructor(stage) {
+    this.video = stage.querySelector('#open-frame-video');
+    this.hint = new StageHint(stage.querySelector('#open-hint'));
+    this.active = false;
+  }
+
+  prime() {
+    const v = this.video;
+    const done = () => { if (!this.active) v.pause(); };
+    Promise.resolve().then(() => v.play()).then(done, done);
+  }
+
+  enter() {
+    this.active = true;
+    Promise.resolve().then(() => this.video.play()).catch(() => {});
+  }
+
+  leave() {
+    this.active = false;
+    this.hint.hide();
+    this.video.pause();
+  }
 }

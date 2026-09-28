@@ -195,8 +195,9 @@ scrollVideo().addEventListener('timeupdate',()=>{if(drawing&&currentScreen==='sc
 function scrollPlaybackError(){
   if(!drawing||currentScreen!=='scr-open')return;
   openingAudioActive=false;
-  ScrollSound.stop();scrollPlaybackFailed=true;const btn=document.getElementById('scroll-open-btn');btn.disabled=false;btn.textContent='소환 영상 다시 재생';
-  toast('영상 재생이 중단되었습니다. 다시 재생해주세요');
+  ScrollSound.stop();scrollPlaybackFailed=true;const btn=document.getElementById('scroll-open-btn');btn.disabled=false;btn.setAttribute('aria-label','Replay the scroll video');
+  // The button is AE art now, so explain with the centred hint instead of relabelling it.
+  openBackdrop.hint.show('VIDEO STOPPED<br>TAP OPEN YOUR SCROLL TO RETRY');
 }
 scrollVideo().addEventListener('error',scrollPlaybackError);
 function playOpeningVideo(){
@@ -219,8 +220,10 @@ go = function(id){
   const resultScreen=document.getElementById('scr-result');resultScreen.inert=id!=='scr-result';resultScreen.setAttribute('aria-hidden',String(id!=='scr-result'));
   if(id!=='scr-open'){openingAudioActive=false;cancelScrollWait();scrollPrimeEpoch++;scrollPrimeTask=null;}
   if(prevScreen==='scr-scrolls'&&id!=='scr-scrolls')chooseScreen.leave();
+  if(prevScreen==='scr-open'&&id!=='scr-open')openBackdrop.leave();
   figureBase.go(id);if(id==='scr-idle')syncIdleTitleLayout();
   if(id==='scr-scrolls')chooseScreen.enter();
+  if(id==='scr-open')openBackdrop.enter();
   scheduleResultLoop();
   if(id==='scr-open')startScrollLoop();else{ScrollSound.stop();scrollMix(false);scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();document.getElementById('scroll-idle-video').pause();if(id!=='scr-result'){cancelAnimationFrame(whiteoutFrame);scrollWhiteout(0);}}
 };
@@ -232,7 +235,7 @@ refreshIdleSoldout = function(){
   document.getElementById('scr-idle').classList.toggle('soldout',!state.ok);
   document.getElementById('idle-banner').textContent=state.ok?'TOUCH': '이벤트 준비 중 · 스태프에게 문의해주세요';
 }
-bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();},1500);} // The idle screen shows the logo lockup only.
+bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();if(currentScreen!=='scr-open')openBackdrop.prime();},1500);} // The idle screen shows the logo lockup only.
 function startFigureGame(){
   const state=figureAvailable();if(!state.ok){toast(state.reason);return;}
   selectedScroll=null;
@@ -245,6 +248,7 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
 },true);
 // The grid is built once; re-rendering would restart the card entrance animation.
 const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
+const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
 window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
 function renderScrollSelection(){
@@ -258,11 +262,11 @@ function chooseScroll(i){selectedScroll=selectedScroll===i?null:i;playSfx('pick'
 function randomScroll(){selectedScroll=Math.floor(Math.random()*12);playSfx('pick');renderScrollSelection();manageIdle();}
 function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else go('scr-scrolls');}}
 function openSelectedScroll(){
-  if(selectedScroll==null){if(currentScreen==='scr-scrolls')toast('소환서를 먼저 선택해주세요');return;}
+  if(selectedScroll==null){if(currentScreen==='scr-scrolls')chooseScreen.showHint('PLEASE SELECT<br>A SCROLL FIRST');return;}
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}
   drawing=false;setScrollProgress(0);document.getElementById('scr-open').classList.remove('opening');
   document.getElementById('scroll-open-btn').disabled=false;
-  document.getElementById('scroll-open-btn').textContent='소환서 자동 오픈';scrollPlaybackFailed=false;
+  document.getElementById('scroll-open-btn').setAttribute('aria-label','Open the scroll automatically');scrollPlaybackFailed=false;
   document.getElementById('open-back').disabled=false;
   document.getElementById('open-number').textContent=`${selectedScroll+1}번 소환서`;
   summonUnlock();startBgm('play');go('scr-open');

@@ -63,7 +63,7 @@
 
 ## 앱 구현 (swc-apac-v2)
 
-- `app/choose-screen.js`: intro 첫 표시 프레임(`requestVideoFrameCallback`)에서 등장 CSS를 시작한다. 700ms 안에 영상이 시작되지 않으면 등장만 먼저 진행한다. intro가 끝나면 마지막 프레임을 유지한 채 loop 첫 프레임이 표시된 뒤 intro를 숨긴다. 화면을 떠날 때 두 영상을 정지하고 0초로 되돌린다.
+- `app/choose-screen.js`: intro 첫 표시 프레임(`requestVideoFrameCallback`)에서 등장 CSS를 시작한다. 콜백이 늦게 오면 그만큼 CSS 타임라인을 앞당겨(`--sync`) 영상 시계에 맞춘다(Chrome 재진입에서 0.15초 지연 관측 후 v4에서 보정). 700ms 안에 영상이 시작되지 않으면 등장만 먼저 진행한다. intro가 끝나면 마지막 프레임을 유지한 채 loop 첫 프레임이 표시된 뒤 intro를 숨긴다. 화면을 떠날 때 두 영상을 정지하고 0초로 되돌린다.
 - 입력은 마지막 카드 등장이 끝나는 1.435초부터 받는다. 뒤로 버튼은 항상 받는다.
 - 카드 그리드는 한 번만 만든다. 다시 그리면 등장 애니메이션이 재시작된다.
 - 위치는 CSS `calc(100% * master px / 2048)` 형태의 원본 픽셀 비율로 넣는다. 반올림한 %는 Chrome에서 1 기기픽셀 어긋났다.
@@ -75,7 +75,7 @@
 - 선택이 생기면 나머지 카드는 밝기 78%·채도 90%로 한 단계 물러난다.
 - RANDOM·SELECT: 평소 모양은 AE 그대로. 등장 완료 후 버튼 모양으로 잘린 빛줄기가 RANDOM 3.2초, SELECT 2.4초 주기로 지나간다. 카드를 고르면 SELECT에 호흡 발광이 켜진다. 누르면 96.5%로 눌린다.
 - 좌상단 `← HOME` 알약형 버튼(Unbounded Bold, SIL OFL — `app/assets/fonts/Unbounded-OFL.txt`). 이 버튼은 이전 단계가 아닌 첫 화면으로 가므로 BACK 대신 HOME으로 표기한다.
-- 선택 전 SELECT를 누르면 모양은 그대로 두고 "소환서를 먼저 선택해주세요" 안내를 띄운다(확정).
+- 선택 전 SELECT를 누르면 모양은 그대로 두고 화면 정중앙에 `PLEASE SELECT / A SCROLL FIRST` 안내를 1.5초 띄운다. 화면을 누르면 즉시 사라지고, 그 터치는 아래 요소에 그대로 전달된다(확정, v4).
 - 감속 모션 설정에서는 반짝임·빛줄기·발광 애니메이션을 끈다.
 
 ### 검증 (Chrome, `scripts/test-choose-browser.cjs`)

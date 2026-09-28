@@ -1,7 +1,7 @@
 /* SWC2026 APAC Cup Lucky Draw — Service Worker
    앱 자산을 사전 캐싱해 오프라인에서도 동작하게 한다.
    ※ 앱을 수정·재배포할 때는 CACHE 버전을 올려야 태블릿이 새 버전을 받는다. */
-const CACHE = 'swc2026-apac-lucky-draw-v3';
+const CACHE = 'swc2026-apac-lucky-draw-v4';
 const ASSETS = [
   './idle-video.js',
   './result-video.js',
@@ -26,6 +26,8 @@ const ASSETS = [
   './assets/oap/choose/scroll-10.webp',
   './assets/oap/choose/scroll-11.webp',
   './assets/oap/choose/scroll-12.webp',
+  './assets/oap/open/open-frame-loop.mp4',
+  './assets/oap/open/open-button.webp',
   './assets/figure/scroll.webp',
   './assets/figure/scroll-card.webp',
   './assets/figure/zeratu.webp',
@@ -60,7 +62,7 @@ const ASSETS = [
   './assets/fonts/CookieRun-Regular.ttf',
   './assets/fonts/CookieRun-Bold.ttf',
   './assets/fonts/CookieRun-Black.ttf',
-  './assets/fonts/Unbounded-Bold.ttf',
+  './assets/fonts/Unbounded-Variable.ttf',
   './assets/badges/badge-a.png',
   './assets/badges/badge-b.png',
   './assets/badges/badge-c.png',

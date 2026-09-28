@@ -43,9 +43,10 @@ const server=http.createServer((req,res)=>{
     const box=document.getElementById('scroll-drag'),chevrons=[...box.querySelectorAll('.drag-chevron')],handle=box.querySelector('.drag-handle'),hint=box.querySelector('.drag-hint');
     box.classList.add('scrubbing');
     const states=[0,.6,.2,0].map(progress=>{setScrollProgress(progress);return {active:chevrons.filter(node=>node.classList.contains('is-active')).length,left:handle.getBoundingClientRect().left};});
-    const visible=getComputedStyle(hint).opacity,guideSize=parseFloat(getComputedStyle(document.querySelector('.drag-guide')).fontSize),cueStroke=parseFloat(getComputedStyle(chevrons[0]).borderRightWidth);box.classList.remove('scrubbing');const cueAnimations=chevrons.map(node=>node.getAnimations().length);return {count:chevrons.length,states,visible,guideSize,cueStroke,cueAnimations};
+    const visible=getComputedStyle(hint).opacity,cueStroke=parseFloat(getComputedStyle(chevrons[0]).borderRightWidth);box.classList.remove('scrubbing');const cueAnimations=chevrons.map(node=>node.getAnimations().length);return {count:chevrons.length,states,visible,cueStroke,cueAnimations};
   });
-  assert.equal(arrow.count,10);assert.deepEqual(arrow.states.map(state=>state.active),[0,6,2,0]);assert.ok(arrow.states[1].left>arrow.states[2].left&&arrow.states[2].left>arrow.states[0].left);assert.equal(arrow.states[0].left,arrow.states[3].left);assert.equal(arrow.visible,'0.75');assert.equal(arrow.guideSize,34.5);assert.equal(arrow.cueStroke,12);assert.deepEqual(arrow.cueAnimations,new Array(10).fill(1));
+  assert.equal(arrow.count,10);assert.deepEqual(arrow.states.map(state=>state.active),[0,6,2,0]);assert.ok(arrow.states[1].left>arrow.states[2].left&&arrow.states[2].left>arrow.states[0].left);assert.equal(arrow.states[0].left,arrow.states[3].left);assert.equal(arrow.visible,'0.92'); // v3 open frame: the SLIDE text is baked into the AE video
+assert.equal(arrow.cueStroke,12);assert.deepEqual(arrow.cueAnimations,new Array(10).fill(1));
   await page.locator('#scroll-open-btn').click();
   const cold=await page.evaluate(()=>({ready:scrollVideo().readyState,visible:getComputedStyle(document.getElementById('scroll-idle-video')).visibility,log:logArr.length}));
   assert.equal(cold.ready,0,'test must click while real video is still loading');
