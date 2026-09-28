@@ -221,3 +221,8 @@
 /* Admin: winning prizes show 특별/당첨 영상, participation shows 상품/클릭 팝업 영상. */
 .figure-admin-media .media-group{display:contents}
 .figure-admin-media[data-kind=figure] .media-participation,.figure-admin-media[data-kind=participation] .media-figure{display:none}
+/* Automatic open, layout C: a compact pill centred in the empty band under the SLIDE bar (2483-2732). */
+.open-auto{position:absolute;z-index:3;left:50%;top:calc(100%*2536/2732);height:calc(100%*140/2732);translate:-50% 0;padding:0 4.2cqw;display:flex;align-items:center;gap:1.4cqw;border-radius:999px;border:2px solid #5b2f14;background:linear-gradient(180deg,#fff3b8,#ffd24d 55%,#f2a800);box-shadow:0 .5cqw 0 #8a4a0c,0 1cqw 2cqw #0003;color:#5b2f14;font:800 2.1cqw/1 'Unbounded',sans-serif;letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .09s ease-out,box-shadow .09s ease-out}
+.open-auto i{font-style:normal;font-size:1.1em}
+.open-auto:active{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8a4a0c,0 .6cqw 1.4cqw #0003}
+#scr-open.opening .open-auto{opacity:.45;pointer-events:none}
