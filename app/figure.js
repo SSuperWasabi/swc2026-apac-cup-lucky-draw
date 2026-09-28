@@ -72,19 +72,27 @@ const summonStage=()=>document.getElementById('summon-stage'),summonVideos=()=>[
 const summonActive=()=>summonStage().classList.contains('active');
 // iOS only lets script start audible playback on elements that were loaded inside a user gesture; do it once when the open screen is entered.
 function summonUnlock(){if(summonUnlocked)return;summonUnlocked=true;summonVideos().forEach(v=>{try{v.load();}catch{}});}
-function hideSummon(){clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});}
+let summonDefaultSrc=null;
+function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;}
+function hideSummon(){clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
 function endSummon(epoch){
   if(epoch!==figureEpoch||epoch!==summonEpoch||currentScreen!=='scr-open'||!summonActive())return;
   clearTimeout(summonTimer);summonEpoch=-1;showResult();startResultMedia();
   summonStage().classList.add('fading');summonTimer=setTimeout(()=>{if(summonStage().classList.contains('fading'))hideSummon();},450);
 }
-function playSummon(epoch){
+async function playSummon(epoch){
   const [v,b]=summonVideos();summonEpoch=epoch;clearTimeout(summonTimer);
+  // The prize's own registered clip (admin 상품 영상) wins over the bundled Zeratu summon clip.
+  const key=lastResult&&(lastResult.media||lastResult.prize).videoKey;
+  const custom=key?await figureMediaUrl(key,epoch):null;
+  if(epoch!==figureEpoch||summonEpoch!==epoch||currentScreen!=='scr-open')return;
+  if(custom){summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=custom;x.load();});}
   summonStage().classList.remove('fading');summonStage().classList.add('active');
-  // Web Audio carries the sound (the same path as the scroll sounds); the video's own track is used only as a fallback.
-  summonTrack=!ScrollSound.has('summon');
+  // Web Audio carries the bundled clip's sound (the same path as the scroll sounds); a registered clip uses its own track.
+  summonTrack=!!custom||!ScrollSound.has('summon');
   v.muted=summonTrack?!!cfg.muted:true;v.volume=1;b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
-  v.play().catch(()=>endSummon(epoch));b.play().catch(()=>{});
+  // iOS may refuse audible playback outside a gesture: fall back to a muted clip rather than skipping it.
+  v.play().catch(()=>{if(v.muted)return endSummon(epoch);v.muted=true;v.play().catch(()=>endSummon(epoch));});b.play().catch(()=>{});
   // Watchdog: a stalled clip must never trap the kiosk on this screen.
   summonTimer=setTimeout(()=>endSummon(epoch),(Number.isFinite(v.duration)&&v.duration>0?v.duration:8)*1000+3000);
 }
@@ -187,8 +195,8 @@ function finishScrollReveal(){
   openingAudioActive=false;
   ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();scrollWhiteout(1);clearTimeout(openingTimer);
   const epoch=figureEpoch;
-  // v5: the AE win video carries its own WIN intro, so figure wins go straight to the result (no legacy summon clip).
-  showResult();startResultMedia();
+  // Winning prize: its cinematic clip plays full screen first, then the v5 win video (endSummon -> showResult).
+  if(lastResult&&lastResult.high)playSummon(epoch);else{showResult();startResultMedia();}
   whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
 }
 scrollVideo().addEventListener('ended',()=>{if(drawing&&currentScreen==='scr-open')finishScrollReveal();});
@@ -385,7 +393,7 @@ resetToIdle = function(){
   if(drawing&&currentScreen==='scr-open')return;
   figureEpoch++;clearTimeout(openingTimer);cancelAnimationFrame(openingFrame);clearInterval(resultTick);closeFigurePopup();hideSummon();
   resultLoop.hide();
-  document.querySelectorAll('#scr-result video:not(#result-loop-video)').forEach(v=>{v.pause();v.removeAttribute('src');v.load();});
+  document.querySelectorAll('#scr-result video:not(#result-loop-video):not(#win-video)').forEach(v=>{v.pause();v.removeAttribute('src');v.load();});
   figureMediaUrls.forEach(url=>URL.revokeObjectURL(url));figureMediaUrls=[];
   selectedScroll=null;figureBase.resetToIdle();
 }
