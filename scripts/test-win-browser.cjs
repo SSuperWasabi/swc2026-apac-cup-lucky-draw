@@ -1,4 +1,5 @@
-// Real Chrome journey to the OAP v5 win screen: figure win -> full-screen AE win video, staff check, 5 s return.
+// Real Chrome journeys through the winning-prize media set per prize in admin (IndexedDB):
+// 특별 영상 (cinematic, optional) -> 당첨 영상 (OAP v5 win screen, optional) -> 결과 복귀(초).
 const {chromium}=require('../.tools/node_modules/playwright-core');
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve('app');
@@ -17,58 +18,89 @@ const server=http.createServer((req,res)=>{
   res.end(data);
  });
 });
+// Stand-ins: the bundled Zeratu summon clip (7 s, AAC audio) as 특별 영상, and the 5 s 1024x1366 open-frame
+// loop as 당첨 영상 (the real v5 renders are uploaded by operators, see resource/oap/upload-ready).
+const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-loop.mp4';
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1024,height:1366},serviceWorkers:'block'});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'load'});
-  await page.evaluate(()=>{cfg.muted=true;
+  const base=`http://127.0.0.1:${server.address().port}/`;
+  await page.goto(base,{waitUntil:'load'});
+  await page.waitForFunction(()=>typeof idb!=='undefined'&&idb);
+
+  // v6 kept a winning prize's cinematic in 상품 영상; on load it moves to 특별 영상.
+  await page.evaluate(()=>{cfg.ips[0].prizes[0].videoKey='legacy_clip';saveCfg();});
+  await page.reload({waitUntil:'load'});await page.waitForFunction(()=>typeof idb!=='undefined'&&idb);
+  assert.deepEqual(await page.evaluate(()=>({special:cfg.ips[0].prizes[0].specialVideoKey,video:cfg.ips[0].prizes[0].videoKey??null})),{special:'legacy_clip',video:null});
+  console.log('PASS: a winning prize\'s old 상품 영상 migrates to 특별 영상');
+
+  await page.evaluate(async([special,win])=>{
+   cfg.muted=true;
+   for(const [key,url] of [['test_special',special],['test_win',win]]){const buf=await(await fetch(url)).arrayBuffer();await idbPut(key,{buf,type:'video/mp4'});}
    window.__confetti=0;new MutationObserver(()=>window.__confetti++).observe(document.getElementById('confetti'),{childList:true});
-   // Video position when the result screen becomes active (the white lifts right after).
-   new MutationObserver(()=>{const r=document.getElementById('scr-result');if(r.classList.contains('active')&&window.__winAtEntry===undefined)window.__winAtEntry=document.getElementById('win-video').currentTime;}).observe(document.getElementById('scr-result'),{attributes:true,attributeFilter:['class']});});
-  // One full journey: start -> choose -> automatic open -> cinematic clip -> v5 win video -> 5 s home.
-  const win=async(label,exit)=>{
-   await page.evaluate(()=>{stock={ip1:[1,0]};refreshIdleSoldout();window.__winAtEntry=undefined;});
+   new MutationObserver(()=>{const r=document.getElementById('scr-result');if(r.classList.contains('active')&&window.__winAtEntry===undefined)window.__winAtEntry=document.getElementById('win-video').currentTime;}).observe(document.getElementById('scr-result'),{attributes:true,attributeFilter:['class']});
+  },[SPECIAL,WIN]);
+
+  const start=async(media)=>{
+   await page.evaluate(media=>{const p=cfg.ips[0].prizes[0];delete p.specialVideoKey;delete p.winVideoKey;Object.assign(p,media);saveCfg();stock={ip1:[1,0]};refreshIdleSoldout();window.__winAtEntry=undefined;},media);
    await page.locator('#idle-banner').click();
    await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
    await page.locator('#scroll-grid .scroll-choice').first().click();await page.locator('#scroll-next').click();await page.waitForTimeout(800);
-   await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter'); // automatic 1.8x opening
-   await page.waitForFunction(()=>document.getElementById('summon-stage').classList.contains('active'),null,{timeout:15000});
-   const clip=await page.evaluate(()=>{const v=document.getElementById('summon-video');return {blob:v.currentSrc.startsWith('blob:'),src:v.getAttribute('src'),screen:currentScreen,win:document.getElementById('scr-result').classList.contains('oap-win')&&currentScreen==='scr-result'};});
-   assert.equal(clip.screen,'scr-open','cinematic plays before the result');
-   await page.waitForFunction(()=>!document.getElementById('summon-video').paused&&document.getElementById('summon-video').currentTime>0.3,null,{timeout:10000});
-   await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
-   const entered=Date.now();
-   if(exit==='idle'){await page.waitForTimeout(500);await page.mouse.click(512,700);assert.equal(await page.evaluate(()=>currentScreen),'scr-result','a tap during the entrance (<2.5 s) is ignored');await page.waitForTimeout(2700);}
-   else await page.waitForTimeout(3200); // staff check fades in 2.4-2.8 s
-   const s=await page.evaluate(()=>{const v=document.getElementById('win-video');return {win:document.getElementById('scr-result').classList.contains('oap-win'),playing:!v.paused,ready:v.readyState,frame:v.videoWidth,
-    atEntry:window.__winAtEntry,t:v.currentTime,staff:document.getElementById('win-staff').textContent,staffOpacity:getComputedStyle(document.getElementById('win-staff')).opacity,
-    confetti:window.__confetti,log:logArr.at(-1),stock:JSON.stringify(stock),cover:(()=>{const r=document.getElementById('win-stage').getBoundingClientRect();return [r.width,r.height];})()};});
-   assert.equal(s.win,true);assert.equal(s.playing,true);assert.ok(s.ready>=2&&s.frame===1024,`${label}: win video has decoded frames (readyState ${s.ready})`);
-   assert.ok(s.t>2.5,`${label}: win video advancing (t=${s.t})`);assert.equal(s.confetti,0);
-   assert.ok(s.atEntry<0.2,`win video starts at its first frame (t=${s.atEntry} at result entry)`);
-   assert.deepEqual(s.cover,[1024,1366]);assert.equal(s.log.kind,'figure');assert.equal(s.stock,'{"ip1":[0,0]}');
-   assert.match(s.staff,new RegExp(`^SHOW THIS SCREEN TO STAFFNo\\. ${s.log.serial} · \\d\\d:\\d\\d:\\d\\d$`));assert.equal(s.staffOpacity,'1');
-   await page.screenshot({path:`.tools/win-v5-${label}.png`});
-   if(exit==='tap'){const t=Date.now();await page.mouse.click(512,700);await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:1500});assert.ok(Date.now()-t<1000,'tap after the entrance returns home at once');}
-   else await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
-   const back=(Date.now()-entered)/1000;
-   if(exit==='idle')assert.ok(back>6.5&&back<7.8,`seven-second return on the win screen (${back}s)`);
-   const after=await page.evaluate(()=>({paused:document.getElementById('win-video').paused,t:document.getElementById('win-video').currentTime,src:document.getElementById('win-video').getAttribute('src'),summonSrc:document.getElementById('summon-video').getAttribute('src')}));
-   assert.deepEqual({paused:after.paused,t:after.t},{paused:true,t:0});assert.ok(after.src,'win video source kept for the next winner');
-   return {clip,atEntry:s.atEntry,serial:s.log.serial,back,summonSrcAfter:after.summonSrc};
   };
-  const a=await win('bundled','idle');
-  assert.equal(a.clip.blob&&!a.clip.src.startsWith('blob:'),false);
-  console.log('PASS: win 1 (bundled Zeratu cinematic) -> v5 win video from t=%s s, staff No. %s, home after %s s (early tap ignored, 7 s idle return)',a.atEntry.toFixed(3),a.serial,a.back.toFixed(1));
-  // Register a prize clip (admin 상품 영상): it replaces the bundled cinematic; the v5 video must still play on this second win.
-  await page.evaluate(async()=>{const buf=await(await fetch('assets/figure/sacred-idle.mp4')).arrayBuffer();await idbPut('prize_clip_test',{buf,type:'video/mp4'});cfg.ips[0].prizes[0].videoKey='prize_clip_test';});
-  const b=await win('registered','tap');
-  assert.equal(b.clip.blob,true,'registered clip plays as the cinematic');
-  assert.ok(!b.summonSrcAfter.startsWith('blob:')||b.summonSrcAfter!==b.clip.src,'bundled cinematic source restored after a registered clip');
-  console.log('PASS: win 2 (registered prize clip) -> v5 win video still plays (t=%s s at entry), staff No. %s; tap after the entrance returned home at %s s; bundled clip source restored',b.atEntry.toFixed(3),b.serial,b.back.toFixed(1));
+  const winState=()=>page.evaluate(()=>{const v=document.getElementById('win-video');return {win:document.getElementById('scr-result').classList.contains('oap-win'),playing:!v.paused,ready:v.readyState,w:v.videoWidth,t:v.currentTime,atEntry:window.__winAtEntry,
+   staff:document.getElementById('win-staff').textContent,serial:logArr.at(-1).serial,stock:JSON.stringify(stock),confetti:window.__confetti};});
+
+  // 1) 특별 + 당첨 영상, automatic opening: cinematic with Web Audio sound, then the win screen; 7 s idle return.
+  await start({specialVideoKey:'test_special',winVideoKey:'test_win'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>document.getElementById('summon-stage').classList.contains('active'),null,{timeout:15000});
+  const specialSrc=await page.evaluate(()=>document.getElementById('summon-video').getAttribute('src'));
+  const clip=await page.evaluate(()=>({screen:currentScreen,src:document.getElementById('summon-video').currentSrc.startsWith('blob:'),decoded:ScrollSound.has('special:test_special'),videoMuted:document.getElementById('summon-video').muted}));
+  assert.deepEqual(clip,{screen:'scr-open',src:true,decoded:true,videoMuted:true},'cinematic from 특별 영상, sound through Web Audio');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
+  let entered=Date.now();
+  await page.waitForTimeout(500);await page.mouse.click(512,700);
+  assert.equal(await page.evaluate(()=>currentScreen),'scr-result','a tap during the entrance (<2.5 s) is ignored');
+  await page.waitForTimeout(2700);
+  let s=await winState();
+  assert.equal(s.win,true);assert.equal(s.playing,true);assert.ok(s.ready>=2&&s.w===1024,`win video decoded (readyState ${s.ready})`);assert.ok(s.atEntry<0.2,`win video from its first frame (t=${s.atEntry})`);
+  assert.equal(s.confetti,0);assert.equal(s.stock,'{"ip1":[0,0]}');
+  assert.match(s.staff,new RegExp(`^SHOW THIS SCREEN TO STAFFNo\\. ${s.serial} · \\d\\d:\\d\\d:\\d\\d$`));
+  await page.screenshot({path:'.tools/win-special-then-win.png'});
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+  let back=(Date.now()-entered)/1000;assert.ok(back>6.5&&back<7.9,`결과 복귀 7 s after the last input (${back}s)`);
+  assert.deepEqual(await page.evaluate(()=>({paused:document.getElementById('win-video').paused,t:document.getElementById('win-video').currentTime,restored:document.getElementById('summon-video').getAttribute('src')})),{paused:true,t:0,restored:await page.evaluate(()=>summonDefaultSrc===null?document.getElementById('summon-video').getAttribute('src'):null)});
+  assert.notEqual(await page.evaluate(()=>document.getElementById('summon-video').getAttribute('src')),specialSrc,'bundled summon source restored after the special clip');
+  console.log('PASS: 특별 영상 (decoded audio) -> 당첨 영상 from t=%s s; early tap ignored; home after %s s',s.atEntry.toFixed(3),back.toFixed(1));
+
+  // 2) 당첨 영상 only, completed drag (no head start): the white holds until the win video can show a frame.
+  await start({winVideoKey:'test_win'});
+  await page.evaluate(()=>{const v=document.getElementById('win-video');v.removeAttribute('src');v.load();winScreen.key=null;winScreen.url=null;}); // force a cold read
+  const r=await page.locator('#scroll-drag').boundingBox();
+  await page.mouse.move(r.x+r.width*0.1,r.y+r.height*0.5);await page.mouse.down();
+  for(let i=1;i<=20;i++){await page.mouse.move(r.x+r.width*(0.1+0.85*i/20),r.y+r.height*0.5);await page.waitForTimeout(30);}
+  await page.mouse.up();
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>document.getElementById('summon-stage').classList.contains('active')),false,'no cinematic without 특별 영상');
+  entered=Date.now();
+  await page.waitForTimeout(3000);
+  s=await winState();
+  assert.equal(s.win,true);assert.ok(s.ready>=2&&s.w===1024);assert.ok(s.atEntry<0.2,`cold win video still starts at its first frame (t=${s.atEntry})`);
+  const t=Date.now();await page.mouse.click(512,700);
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:1500});assert.ok(Date.now()-t<1000,'tap after the entrance returns home at once');
+  console.log('PASS: 당첨 영상 only, completed drag: white held until ready, win video from t=%s s; tap after the entrance returned home',s.atEntry.toFixed(3));
+
+  // 3) 결과 복귀(초) setting drives the win screen too.
+  await page.evaluate(()=>{cfg.resultReturnSec=4;});
+  await start({winVideoKey:'test_win'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:15000});entered=Date.now();
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:8000});back=(Date.now()-entered)/1000;
+  assert.ok(back>3.5&&back<4.8,`결과 복귀 4 s applied (${back}s)`);
+  console.log('PASS: 결과 복귀(초)=4 returns the win screen after %s s',back.toFixed(1));
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -16,6 +16,11 @@ const ScrollSound=(()=>{
       }
     }catch{ /* Embedded video audio remains available for automatic playback. */ }
   }
+  // Decode the audio track of an uploaded clip (MP4/AAC) so it can be cued like the bundled WAVs.
+  async function addClip(name,buffer){
+    if(!context||clips[name])return !!clips[name];
+    try{clips[name]=await context.decodeAudioData(buffer.slice(0));return true;}catch{return false;}
+  }
   function stop(){for(const v of voices){try{v.stop();}catch{}}voices.clear();}
   function begin(){stop();previous=0;lastGrain=-Infinity;if(context&&context.state!=='running')context.resume().catch(()=>{});}
   function has(name){return !!(context&&clips[name]);}
@@ -47,5 +52,5 @@ const ScrollSound=(()=>{
     source.start(now,offset,duration);
   }
   if(typeof fetch==='function')prepare();
-  return {begin,cue,has,loop,scrub,stop};
+  return {addClip,begin,cue,has,loop,scrub,stop};
 })();

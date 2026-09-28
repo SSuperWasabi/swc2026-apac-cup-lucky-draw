@@ -162,26 +162,45 @@ class OpenBackdrop {
   }
 }
 
-// WIN PRIZE (OAP v5): the prize video is an AE pre-render (one per prize); it plays once from
-// frame 0 when the result shows and holds its last frame. Parked at 0 while hidden.
+// WIN PRIZE (OAP v5): each winning prize has its own AE pre-render (admin 당첨 영상, IndexedDB).
+// prepare() loads it as soon as the draw commits; play() starts it from frame 0 when the result shows.
 class WinScreen {
   constructor(stage, onHome) {
     this.video = stage.querySelector('#win-video');
     this.active = false;
+    this.key = null;
+    this.url = null;
     // Taps return home only once the AE entrance is complete (last entrance key: frame opacity at 2.5 s),
     // measured on the video clock so a stalled video never exits early.
     this.entranceEnd = 2.5;
     stage.addEventListener('click', () => { if (this.active && this.video.currentTime >= this.entranceEnd) onHome(); });
   }
 
+  hasVideo(key) { return !!key && key === this.key && !!this.url; }
+
   rewind() {
     try { if (this.video.currentTime !== 0) this.video.currentTime = 0; } catch (e) { /* not seekable yet */ }
   }
 
-  prime() {
-    const v = this.video;
-    const done = () => { if (this.active) return; v.pause(); this.rewind(); };
-    Promise.resolve().then(() => v.play()).then(done, done);
+  // Resolves true once the first frame is decodable (or false: missing/unplayable, 4 s cap).
+  prepare(key) {
+    if (this.hasVideo(key)) { this.rewind(); return Promise.resolve(this.video.readyState >= 2); }
+    return (async () => {
+      const data = await idbGet(key);
+      const blob = data && mediaBlob(data);
+      if (!blob) return false;
+      if (this.url) URL.revokeObjectURL(this.url);
+      this.key = key;
+      this.url = URL.createObjectURL(blob);
+      const v = this.video;
+      v.src = this.url;
+      v.load();
+      return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(v.readyState >= 2), 4000);
+        v.addEventListener('loadeddata', () => { clearTimeout(timer); resolve(true); }, { once: true });
+        v.addEventListener('error', () => { clearTimeout(timer); resolve(false); }, { once: true });
+      });
+    })();
   }
 
   play() {

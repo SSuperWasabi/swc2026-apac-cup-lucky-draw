@@ -453,10 +453,10 @@
   <!-- S6 결과 (당첨 연출 포함 — 구 S5 통합) -->
   <div class="screen" id="scr-result" inert aria-hidden="true">
     <div id="result-media-cover" aria-hidden="true"></div>
-    <!-- OAP v5 WIN PRIZE: per-prize AE pre-render, full screen over the result card (docs/oap-spec/win-v5) -->
+    <!-- OAP v5 WIN PRIZE: per-prize AE pre-render (admin 당첨 영상), full screen over the result card (docs/oap-spec/win-v5) -->
     <div class="win-stage" id="win-stage">
       <div class="win-frame">
-        <video id="win-video" class="win-video" src="assets/oap/win/win-zeratu-figure.mp4" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+        <video id="win-video" class="win-video" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
         <div class="win-staff" id="win-staff" role="status"></div>
       </div>
     </div>
@@ -557,7 +557,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v7';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v8';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1226,7 +1226,7 @@ function admClearLog(){ if(confirm('당첨 로그를 모두 삭제할까요? (CS
    범위 선택(전체/영상 제외) + 순차 로딩(피크 완화). 영상 제외 백업은 가져올 때 대상 기기의 영상을 유지. */
 const KUJI_MAGIC='KUJI', KUJI_VER=2;
 /* 이 기기 설정 기준 영상 키 집합 (대기영상 + 영상 NPC + 레거시) */
-function videoKeySet(c){ const s=new Set(['idle_video']); ((c&&c.ips)||[]).forEach(ip=>(ip.prizes||[]).forEach(p=>{if(p.videoKey)s.add(p.videoKey);if(p.popupVideoKey)s.add(p.popupVideoKey);})); ((c&&c.idleVideos)||[]).forEach(x=>s.add('idlevid_'+x.id)); ((c&&c.npcs)||[]).forEach(n=>{ if(n.type==='video') s.add('npc_'+n.id); }); return s; }
+function videoKeySet(c){ const s=new Set(['idle_video']); ((c&&c.ips)||[]).forEach(ip=>(ip.prizes||[]).forEach(p=>{for(const k of ['videoKey','popupVideoKey','specialVideoKey','winVideoKey'])if(p[k])s.add(p[k]);})); ((c&&c.idleVideos)||[]).forEach(x=>s.add('idlevid_'+x.id)); ((c&&c.npcs)||[]).forEach(n=>{ if(n.type==='video') s.add('npc_'+n.id); }); return s; }
 function summarizeMedia(arr){ const c={img:0,audio:0,other:0}; (arr||[]).forEach(m=>{ if(m.kind==='image')c.img++; else if(/^(bgm_|sfx_)/.test(m.key))c.audio++; else c.other++; }); return c; }
 function dlBlob(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ try{a.remove();}catch(e){} URL.revokeObjectURL(url); },1500); }
 function backupName(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return `kuji-backup-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.kuji`; }
@@ -1386,7 +1386,7 @@ async function applyBackup(buf){
       // 영상 목록은 이 기기 것을 유지 (백업 cfg의 영상 참조는 이 기기에 파일이 없음)
       const nc=JSON.parse(ls.cfg);
       nc.idleVideos = oldCfg.idleVideos||[];
-      (nc.ips||[]).forEach(ip=>(ip.prizes||[]).forEach((p,i)=>{ const oldIp=(oldCfg.ips||[]).find(x=>x.id===ip.id); const old=oldIp&&oldIp.prizes[i]; for(const key of ['videoKey','popupVideoKey']){delete p[key];if(old&&old[key])p[key]=old[key];} }));
+      (nc.ips||[]).forEach(ip=>(ip.prizes||[]).forEach((p,i)=>{ const oldIp=(oldCfg.ips||[]).find(x=>x.id===ip.id); const old=oldIp&&oldIp.prizes[i]; for(const key of ['videoKey','popupVideoKey','specialVideoKey','winVideoKey']){delete p[key];if(old&&old[key])p[key]=old[key];} }));
       nc.npcs = [ ...((nc.npcs||[]).filter(n=>n.type!=='video')), ...((oldCfg.npcs||[]).filter(n=>n.type==='video')) ];
       localStorage.setItem(K_CFG, JSON.stringify(nc));
     } else localStorage.setItem(K_CFG, ls.cfg);

@@ -72,7 +72,26 @@ const summonStage=()=>document.getElementById('summon-stage'),summonVideos=()=>[
 const summonActive=()=>summonStage().classList.contains('active');
 // iOS only lets script start audible playback on elements that were loaded inside a user gesture; do it once when the open screen is entered.
 function summonUnlock(){if(summonUnlocked)return;summonUnlocked=true;summonVideos().forEach(v=>{try{v.load();}catch{}});}
-let summonDefaultSrc=null;
+// Winning-prize media (admin, per prize): 특별 영상 = optional full-screen cinematic first,
+// 당첨 영상 = optional full-screen win screen (without it the gold result card shows). Both are read from
+// IndexedDB as soon as the draw commits so the white flash lifts onto a ready frame.
+let summonDefaultSrc=null,summonClip='summon',winMediaTask=null;
+function winMedia(result){const m=result&&result.high?(result.media||result.prize):null;return {special:(m&&m.specialVideoKey)||null,win:(m&&m.winVideoKey)||null};}
+function prepareWinMedia(result,epoch){
+  if(winMediaTask&&winMediaTask.result===result)return winMediaTask;
+  const keys=winMedia(result),task={result,special:null,clip:null};
+  task.win=keys.win?winScreen.prepare(keys.win):Promise.resolve(false);
+  task.cinematic=keys.special?(async()=>{
+    const data=await idbGet(keys.special),blob=data&&mediaBlob(data);
+    if(!blob||epoch!==figureEpoch)return false;
+    task.special=URL.createObjectURL(blob);figureMediaUrls.push(task.special);
+    // Its sound goes through Web Audio like the bundled clips, so iPad plays it outside a gesture too.
+    const buf=data.buf instanceof ArrayBuffer?data.buf:(blob.arrayBuffer?await blob.arrayBuffer():null);
+    if(buf&&await ScrollSound.addClip('special:'+keys.special,buf))task.clip='special:'+keys.special;
+    return true;
+  })():Promise.resolve(false);
+  winMediaTask=task;return task;
+}
 function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;}
 function hideSummon(){clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
 function endSummon(epoch){
@@ -80,16 +99,12 @@ function endSummon(epoch){
   clearTimeout(summonTimer);summonEpoch=-1;showResult();startResultMedia();
   summonStage().classList.add('fading');summonTimer=setTimeout(()=>{if(summonStage().classList.contains('fading'))hideSummon();},450);
 }
-async function playSummon(epoch){
+function playSummon(epoch,task){
   const [v,b]=summonVideos();summonEpoch=epoch;clearTimeout(summonTimer);
-  // The prize's own registered clip (admin 상품 영상) wins over the bundled Zeratu summon clip.
-  const key=lastResult&&(lastResult.media||lastResult.prize).videoKey;
-  const custom=key?await figureMediaUrl(key,epoch):null;
-  if(epoch!==figureEpoch||summonEpoch!==epoch||currentScreen!=='scr-open')return;
-  if(custom){summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=custom;x.load();});}
+  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=task.special;x.load();});
   summonStage().classList.remove('fading');summonStage().classList.add('active');
-  // Web Audio carries the bundled clip's sound (the same path as the scroll sounds); a registered clip uses its own track.
-  summonTrack=!!custom||!ScrollSound.has('summon');
+  // Decoded audio is cued at the picture position; without it the clip's own track plays.
+  summonClip=task.clip||'summon';summonTrack=!task.clip;
   v.muted=summonTrack?!!cfg.muted:true;v.volume=1;b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
   // iOS may refuse audible playback outside a gesture: fall back to a muted clip rather than skipping it.
   v.play().catch(()=>{if(v.muted)return endSummon(epoch);v.muted=true;v.play().catch(()=>endSummon(epoch));});b.play().catch(()=>{});
@@ -98,7 +113,7 @@ async function playSummon(epoch){
 }
 document.getElementById('summon-video').addEventListener('ended',()=>endSummon(summonEpoch));
 // Start the clip audio exactly where the picture (re)starts, and hold it while the picture stalls.
-document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack)ScrollSound.cue('summon',v.currentTime,!!cfg.muted);});
+document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack)ScrollSound.cue(summonClip,v.currentTime,!!cfg.muted);});
 document.getElementById('summon-video').addEventListener('waiting',()=>{if(summonActive()&&!summonTrack)ScrollSound.stop();});
 document.getElementById('summon-video').addEventListener('error',()=>endSummon(summonEpoch));
 document.getElementById('summon-video').addEventListener('timeupdate',()=>{const [v,b]=summonVideos();if(summonActive()&&b.readyState>=2&&Math.abs(v.currentTime-b.currentTime)>.25){try{b.currentTime=v.currentTime;}catch{}}});
@@ -194,10 +209,19 @@ scrollVideo().addEventListener('seeked',scrollMediaReady);
 function finishScrollReveal(){
   openingAudioActive=false;
   ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();scrollWhiteout(1);clearTimeout(openingTimer);
-  const epoch=figureEpoch;
-  // Winning prize: its cinematic clip plays full screen first, then the v5 win video (endSummon -> showResult).
-  if(lastResult&&lastResult.high)playSummon(epoch);else{showResult();startResultMedia();}
-  whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
+  const epoch=figureEpoch,result=lastResult;
+  const reveal=()=>{
+    if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
+    const task=result&&result.high?prepareWinMedia(result,epoch):null;
+    // Winning prize: 특별 영상 first (endSummon -> showResult), otherwise straight to the result.
+    if(task&&task.special)playSummon(epoch,task);else{showResult();startResultMedia();}
+    whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
+  };
+  const keys=winMedia(result);
+  if(!keys.special&&!keys.win){reveal();return;}
+  // Hold the white until the first prize video can show a frame (never flash an empty one); cap the wait.
+  const task=prepareWinMedia(result,epoch);
+  Promise.race([keys.special?task.cinematic:task.win,new Promise(r=>setTimeout(r,2500))]).then(reveal);
 }
 scrollVideo().addEventListener('ended',()=>{if(drawing&&currentScreen==='scr-open')finishScrollReveal();});
 scrollVideo().addEventListener('timeupdate',()=>{if(drawing&&currentScreen==='scr-open')updateScrollWhiteout(scrollVideo().currentTime);});
@@ -244,7 +268,7 @@ refreshIdleSoldout = function(){
   document.getElementById('scr-idle').classList.toggle('soldout',!state.ok);
   document.getElementById('idle-banner').textContent=state.ok?'TOUCH': '이벤트 준비 중 · 스태프에게 문의해주세요';
 }
-bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();if(currentScreen!=='scr-open')openBackdrop.prime();if(currentScreen!=='scr-result')winScreen.prime();},1500);} // The idle screen shows the logo lockup only.
+bootIdle = async function(){await figureBase.bootIdle();document.getElementById('idle-sub').textContent='';scheduleResultLoop();setTimeout(()=>{if(currentScreen!=='scr-scrolls')chooseScreen.prime();if(currentScreen!=='scr-open')openBackdrop.prime();},1500);} // The idle screen shows the logo lockup only.
 function startFigureGame(){
   const state=figureAvailable();if(!state.ok){toast(state.reason);return;}
   selectedScroll=null;
@@ -296,8 +320,9 @@ manageIdle = function(){
   if(drawing&&currentScreen==='scr-open')return;
   if(currentScreen==='scr-result'){
     if(figurePopup)return;
-    // Win screen: 7 s (tap returns earlier once the entrance is done); participation keeps 5 s.
-    const ms=document.getElementById('scr-result').classList.contains('oap-win')?7000:5000;
+    // Admin 결과 복귀(초), default 7, for the win screen and the card result alike (a tap on the win screen
+    // after its entrance returns earlier).
+    const ms=resultReturnSec()*1000;
     resultDeadline=Date.now()+ms;idleTimer=setTimeout(resetToIdle,ms);updateResultCountdown();
   }else if(['scr-scrolls','scr-open','scr-ip','scr-lineup'].includes(currentScreen)){
     idleTimer=setTimeout(resetToIdle,Math.max(3,cfg.idleTimeoutSec||30)*1000);
@@ -320,6 +345,7 @@ function commitFigureDraw(){
 function commitScrollDraw(){
   try{commitFigureDraw();}catch(error){setScrollProgress(0);startScrollLoop();toast('추첨을 진행하지 못했습니다: '+error.message);return false;}
   drawing=true;clearTimeout(idleTimer);document.getElementById('open-back').disabled=true;
+  if(lastResult&&lastResult.high)prepareWinMedia(lastResult,figureEpoch);
   document.getElementById('scr-open').classList.add('opening');return true;
 }
 // Automatic open (button / keyboard): play the whole clip and finish on `ended`.
@@ -360,10 +386,11 @@ renderResult = function(){
   clearInterval(resultTick);resultTick=setInterval(updateResultCountdown,200);
   const key=reusableResultKey(lastResult);if(key)resultLoop.show(key);
   // Figure win: full-screen AE win video with a small staff check (serial and time).
-  const win=!!lastResult.high;document.getElementById('scr-result').classList.toggle('oap-win',win);
+  const win=!!lastResult.high&&winScreen.hasVideo(winMedia(lastResult).win);document.getElementById('scr-result').classList.toggle('oap-win',win);
   if(win){const t=new Date(),hms=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
    document.getElementById('win-staff').innerHTML=`<b>SHOW THIS SCREEN TO STAFF</b><span>No. ${lastResult.serial} · ${hms}</span>`;winScreen.play();}
 }
+function resultReturnSec(){const s=Number(cfg.resultReturnSec);return Number.isFinite(s)&&s>=3?Math.round(s):7;}
 function updateResultCountdown(){const e=document.getElementById('result-countdown');if(e)e.textContent=figurePopup?'영상 재생 중':`${Math.max(0,Math.ceil((resultDeadline-Date.now())/1000))}초 후 처음으로 돌아갑니다`;}
 async function figureMediaUrl(key,epoch=figureEpoch){
   if(!key)return null;const data=await idbGet(key);if(!data||epoch!==figureEpoch)return null;if(typeof data==='string')return data;
@@ -405,17 +432,24 @@ renderAdmIps = function(){
     card.querySelectorAll('.prize-edit-row').forEach((row,pi)=>{
       const p=cfg.ips[ii].prizes[pi],kind=p.kind||(p.tier==='high'?'figure':'participation');
       const select=row.querySelector('select');select.innerHTML=`<option value="participation" ${kind==='participation'?'selected':''}>참가상</option><option value="figure" ${kind==='figure'?'selected':''}>피규어</option>`;
-      select.onchange=()=>{p.kind=select.value;p.tier=p.kind==='figure'?'high':'normal';};
+      select.onchange=()=>{p.kind=select.value;p.tier=p.kind==='figure'?'high':'normal';media.dataset.kind=p.kind;};
       row.querySelector('.cool-in').disabled=true;row.querySelector('.cool-in').title='피규어 드로우에서는 쿨다운을 사용하지 않습니다';
-      const media=document.createElement('div');media.className='figure-admin-media';
-      media.innerHTML=`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'videoKey')">${p.videoKey?'✓ ':''}상품 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'videoKey')">상품 영상 해제</button><button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'popupVideoKey')">${p.popupVideoKey?'✓ ':''}클릭 팝업 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'popupVideoKey')">팝업 해제</button>`;row.after(media);
+      const media=document.createElement('div');media.className='figure-admin-media';media.dataset.kind=kind;
+      const btn=(field,label,clear)=>`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'${field}')">${p[field]?'✓ ':''}${label}</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'${field}')">${clear}</button>`;
+      media.innerHTML=`<span class="media-group media-figure">${btn('specialVideoKey','특별 영상','특별 영상 해제')}${btn('winVideoKey','당첨 영상','당첨 영상 해제')}</span><span class="media-group media-participation">`+`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'videoKey')">${p.videoKey?'✓ ':''}상품 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'videoKey')">상품 영상 해제</button><button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'popupVideoKey')">${p.popupVideoKey?'✓ ':''}클릭 팝업 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'popupVideoKey')">팝업 해제</button></span>`;row.after(media);
     });
   });
-  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='피규어 / 참가상을 지정하고 실제 수량을 입력하세요. 기본은 전체 IP의 노출 경품을 합친 잔여 재고 비례 추첨입니다. 설정 탭에서 별도 피규어 확률을 켤 수 있습니다. 시간 제한은 설정 탭에서 관리하며 상품별 쿨다운과 행운상은 적용하지 않습니다.';document.getElementById('pane-ips').prepend(note);
+  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='피규어(당첨) 상품: 특별 영상(선택)이 있으면 먼저 전체 화면으로 재생하고, 당첨 영상(선택)이 있으면 이어서 전체 화면 당첨 화면으로 보여줍니다. 당첨 영상이 없으면 당첨 카드 화면이 나옵니다. 두 영상은 iPad 재생 규격(1024×1366 권장, 1080×1920 이하 H.264)만 등록됩니다. 참가상: 상품 영상은 결과 카드 안 반복 영상, 클릭 팝업 영상은 카드 이미지를 누르면 열리는 영상입니다. 피규어 / 참가상을 지정하고 실제 수량을 입력하세요. 기본은 전체 IP의 노출 경품을 합친 잔여 재고 비례 추첨입니다. 설정 탭에서 별도 피규어 확률을 켤 수 있습니다. 시간 제한은 설정 탭에서 관리하며 상품별 쿨다운과 행운상은 적용하지 않습니다.';document.getElementById('pane-ips').prepend(note);
 }
+function videoFrameSize(file){return new Promise(resolve=>{const v=document.createElement('video'),url=URL.createObjectURL(file);const done=r=>{URL.revokeObjectURL(url);resolve(r);};v.preload='metadata';v.muted=true;v.onloadedmetadata=()=>done([v.videoWidth,v.videoHeight]);v.onerror=()=>done(null);v.src=url;});}
 async function uploadFigureVideo(ii,pi,field){
   const p=cfg.ips[ii].prizes[pi],f=await pickFile('video/*');if(!f)return;
   if(f.size>60*1048576){toast('영상은 60MB 이하로 등록해주세요');return;}
+  if(field==='specialVideoKey'||field==='winVideoKey'){
+    // iPad Pro 3rd gen decodes H.264 only up to level 4.2 (8704 macroblocks a frame): a 2048x2732 master would stay blank there.
+    const size=await videoFrameSize(f);
+    if(size&&Math.ceil(size[0]/16)*Math.ceil(size[1]/16)>8704){toast(`${size[0]}×${size[1]} 영상은 iPad에서 재생되지 않습니다. 1024×1366(1080×1920 이하)으로 변환해 등록해주세요`);return;}
+  }
   const buf=await fileToArrayBuffer(f);if(!buf){toast('영상 파일을 읽지 못했습니다');return;}
   const key='figure_video_'+Date.now()+'_'+field;
   if(!await idbPut(key,{buf,type:f.type||'video/mp4'})){toast('영상 저장 공간을 확인해주세요');return;}
@@ -426,12 +460,15 @@ function removeFigureVideo(ii,pi,field){const p=cfg.ips[ii].prizes[pi],old=p[fie
 renderAdmSettings = function(){
   figureBase.renderAdmSettings();
   const root=document.getElementById('pane-settings'),card=document.createElement('div');card.className='adm-card';
-  card.innerHTML=`<h4>피규어 드로우</h4><div class="adm-row"><label for="hide-scroll-selection">소환서 선택 화면 숨김</label><input id="hide-scroll-selection" type="checkbox" role="switch" ${cfg.hideScrollSelection===true?'checked':''} onchange="saveScrollSelectionVisibility()"></div><p class="figure-rule-note">켜면 메인에서 소환서를 자동 선택하여 개봉 화면으로 바로 이동합니다. 변경 즉시 저장됩니다.</p><div class="adm-row"><label for="figure-probability-enabled">피규어 당첨 확률 사용</label><input id="figure-probability-enabled" type="checkbox" role="switch" ${figureProbabilityEnabled()?'checked':''} onchange="updateFigureRuleInputs()" style="flex:none;width:24px;height:24px"></div><div class="adm-row"><label for="figure-percent">피규어 확률 (%)</label><input id="figure-percent" type="number" min="0" max="100" step="any" value="${figurePercent()}" ${figureProbabilityEnabled()?'':'disabled'}></div><p id="figure-mode-note" class="figure-rule-note" aria-live="polite"></p><p class="figure-rule-note">소환서 번호는 확률에 영향을 주지 않습니다. 결과는 무입력 5초 후 복귀합니다. 변경 후 저장 버튼을 눌러 적용하세요.</p><button class="adm-btn pri" onclick="saveFigureRules()">추첨 방식 저장</button>`;root.prepend(card);updateFigureRuleInputs();
+  card.innerHTML=`<h4>피규어 드로우</h4><div class="adm-row"><label for="hide-scroll-selection">소환서 선택 화면 숨김</label><input id="hide-scroll-selection" type="checkbox" role="switch" ${cfg.hideScrollSelection===true?'checked':''} onchange="saveScrollSelectionVisibility()"></div><p class="figure-rule-note">켜면 메인에서 소환서를 자동 선택하여 개봉 화면으로 바로 이동합니다. 변경 즉시 저장됩니다.</p><div class="adm-row"><label for="figure-probability-enabled">피규어 당첨 확률 사용</label><input id="figure-probability-enabled" type="checkbox" role="switch" ${figureProbabilityEnabled()?'checked':''} onchange="updateFigureRuleInputs()" style="flex:none;width:24px;height:24px"></div><div class="adm-row"><label for="figure-percent">피규어 확률 (%)</label><input id="figure-percent" type="number" min="0" max="100" step="any" value="${figurePercent()}" ${figureProbabilityEnabled()?'':'disabled'}></div><p id="figure-mode-note" class="figure-rule-note" aria-live="polite"></p><p class="figure-rule-note">소환서 번호는 확률에 영향을 주지 않습니다. 결과 화면 복귀 시간은 기본 설정의 결과 복귀(초)를 따릅니다. 변경 후 저장 버튼을 눌러 적용하세요.</p><button class="adm-btn pri" onclick="saveFigureRules()">추첨 방식 저장</button>`;root.prepend(card);updateFigureRuleInputs();
   const visibility=document.createElement('div');visibility.className='adm-card selection-visibility-card';
   visibility.innerHTML='<h4>현장 운영 · 시퀀스 간소화</h4>';
   const visibilityRow=document.getElementById('hide-scroll-selection').closest('.adm-row');
   const visibilityNote=visibilityRow.nextElementSibling;visibility.append(visibilityRow,visibilityNote);root.prepend(visibility);
-  ['set-drawidle'].forEach(id=>{const el=document.getElementById(id);el.disabled=true;el.title='피규어 드로우에서는 사용하지 않는 기존 쿠지 설정';});
+  // The legacy kuji draw-screen return has no screen here; the field now sets the result screen return.
+  const ret=document.getElementById('set-drawidle');ret.disabled=false;ret.min='3';ret.value=resultReturnSec();ret.title='결과 화면(당첨 영상·당첨 카드·참가상) 무입력 시 메인 복귀(초)';
+  ret.closest('.adm-row').querySelector('label').textContent='결과 복귀(초)';
+  const retNote=ret.closest('.adm-row').nextElementSibling;if(retNote&&retNote.classList.contains('muted-note'))retNote.innerHTML='결과 복귀 = 결과 화면(당첨 영상·당첨 카드·참가상)에서 무입력 N초 후 메인 복귀(최소 3초, 기본 7초). 당첨 영상은 등장 애니메이션이 끝난 뒤 화면을 누르면 바로 복귀합니다. 라인업(S3) 설정은 이 앱의 흐름에 쓰이지 않습니다.';
   root.querySelector('button[onclick="toggleLineup()"]').disabled=true;
   const timing=document.createElement('div');timing.className='adm-card';
   timing.innerHTML=`<h4>피규어 당첨 시간 제한</h4><label><input id="figure-cool-on" type="checkbox" ${cfg.figureCooldownEnabled===true?'checked':''}> 당첨 후 쿨다운 사용</label><p>시간(분)은 기본 설정의 쿨다운(분)에서 지정합니다. 모든 피규어에 공통 적용합니다.</p><label><input id="figure-interval-on" type="checkbox" ${cfg.figureIntervalEnabled===true?'checked':''}> 구간당 1개 배정</label><div class="adm-row"><label>구간 길이(분)</label><input id="figure-interval-min" type="number" min="1" value="${Number(cfg.figureIntervalMin)||24}"></div><div class="adm-row"><label>운영 시작 시각</label><input id="figure-interval-start" type="datetime-local"></div><p>시작 시각부터 설정한 길이로 구간을 계속 나눕니다. 구간 수 제한 없이 남은 피규어 재고를 사용합니다. 각 구간의 무작위 시각 이후 첫 참여자에게 피규어를 지급합니다. 이 모드에서는 확률과 쿨다운 대신 구간 배정을 적용합니다. 참여자나 재고가 없으면 지급할 수 없으며 미지급분은 이월하지 않습니다. 당일 배포할 재고만 입력하세요. 재고 소진 후에는 참가상만 진행합니다. 둘째 날에는 시작 날짜/시각을 다시 설정하세요.</p><button class="adm-btn pri" onclick="saveFigureTiming()">시간 제한 저장</button>`;
@@ -517,3 +554,19 @@ function saveFigureTiming(){
  if(enabled&&(old.figureIntervalStart!==cfg.figureIntervalStart||old.figureIntervalMin!==minutes||!cfg.figureIntervalSeed))cfg.figureIntervalSeed=Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
  if(!saveCfg()){for(const key of ['figureIntervalSeed','figureCooldownEnabled','cooldownMin','figureIntervalEnabled','figureIntervalMin','figureIntervalStart']){if(Object.hasOwn(old,key))cfg[key]=old[key];else delete cfg[key];}toast('설정 저장 실패');return;}refreshIdleSoldout();toast('시간 제한 저장됨');
 }
+
+const baseSaveSettings=saveSettings;
+saveSettings=function(){
+  const v=parseInt(document.getElementById('set-drawidle').value);
+  baseSaveSettings();
+  cfg.resultReturnSec=Number.isFinite(v)?Math.max(3,v):7;if(!saveCfg())toast('설정 저장 실패');
+};
+// v6 used a winning prize's 상품 영상 as its cinematic; it is the 특별 영상 slot now.
+(function migrateWinningPrizeMedia(){
+  let changed=false;
+  for(const ip of cfg.ips||[])for(const p of ip.prizes||[]){
+    const kind=p.kind||(p.tier==='high'?'figure':'participation');
+    if(kind==='figure'&&p.videoKey&&!p.specialVideoKey){p.specialVideoKey=p.videoKey;delete p.videoKey;changed=true;}
+  }
+  if(changed)saveCfg();
+})();

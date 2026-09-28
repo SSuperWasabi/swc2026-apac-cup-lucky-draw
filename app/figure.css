@@ -218,3 +218,6 @@
 .win-staff span{font-weight:500;font-size:1.25em}
 @keyframes win-staff-in{from{opacity:0;transform:translateY(1cqh)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.win-staff{animation-duration:.01s}}
+/* Admin: winning prizes show 특별/당첨 영상, participation shows 상품/클릭 팝업 영상. */
+.figure-admin-media .media-group{display:contents}
+.figure-admin-media[data-kind=figure] .media-participation,.figure-admin-media[data-kind=participation] .media-figure{display:none}

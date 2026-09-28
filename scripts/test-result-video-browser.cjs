@@ -54,7 +54,7 @@ const server=http.createServer((req,res)=>{
    }));
    assert.equal(sample.enter.warm,true);assert.equal(sample.same,true);assert.equal(sample.source,originalSource);
    assert.deepEqual(sample.counts,{load:0,seek:0,waiting:0});assert.equal(sample.muted,true);
-   assert.equal(sample.logs,i+1);assert.equal(sample.stock,39-i);assert.ok(sample.remaining>3500&&sample.remaining<=5000);assert.equal(sample.resultVisible,true);
+   assert.equal(sample.logs,i+1);assert.equal(sample.stock,39-i);assert.ok(sample.remaining>5500&&sample.remaining<=7000); // 결과 복귀(초) default 7assert.equal(sample.resultVisible,true);
    assert.ok(sample.frame.mediaTime<.12);times.push(sample.frame.ms);
    if(i===0)await page.screenshot({path:'.tools/result-loop-v32.png'});
    await page.evaluate(()=>resetToIdle());
@@ -70,9 +70,9 @@ const server=http.createServer((req,res)=>{
   await page.waitForTimeout(5200);
   assert.equal(await page.evaluate(()=>currentScreen), 'scr-result','popup must suspend auto-return');
   await page.locator('.figure-media-popup button').click();
-  assert.ok(await page.evaluate(()=>resultDeadline-Date.now()>4500),'closing popup retains the existing five-second rule');
+  assert.ok(await page.evaluate(()=>resultDeadline-Date.now()>4500),'closing popup restarts the result return time');
   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:7000});
-  console.log('PASS: original click target, popup pause/close/five-second automatic return');
+  console.log('PASS: original click target, popup pause/close/result-return automatic return');
   await ready();
   await page.evaluate(()=>{resultLoop.suspend();idleDeck.suspend();});
   assert.equal(await page.evaluate(()=>resultLoop.video.paused&&idleDeck.videos.every(v=>v.paused)),true);

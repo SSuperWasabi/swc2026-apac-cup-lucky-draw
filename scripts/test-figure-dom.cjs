@@ -113,7 +113,7 @@ w.revealScroll();assert.equal(JSON.parse(w.localStorage.getItem('swc2026-apac-lu
 video.dispatchEvent(new w.Event('ended'));assert.ok(w.document.getElementById('scr-result').classList.contains('active'));
 assert.equal(w.document.getElementById('scroll-whiteout').style.opacity,'1');
 assert.equal(w.document.getElementById('rc-grade').hidden,true);assert.equal(w.document.getElementById('rc-name').textContent,'아쉽게도 당첨을 놓쳤어요!\n다음 기회를 노려보아요!');
-assert.match(w.document.getElementById('result-countdown').textContent,/5초/);
+assert.match(w.document.getElementById('result-countdown').textContent,/7초/); // 결과 복귀(초) default
 w.resetToIdle();assert.ok(w.document.getElementById('scr-idle').classList.contains('active'));
 // Idle loop keeps the clip's own audio, following the admin mute switch; BGM ducks for the whole screen.
 const idleVideo=w.document.getElementById('scroll-idle-video');
@@ -133,35 +133,36 @@ video.dispatchEvent(new w.Event('ended'));assert.equal(JSON.parse(w.localStorage
 assert.ok(Math.abs(evaluate('bgmEl.play.volume')-.4)<.001);
 console.log('PASS: idle loop audio follows mute switch; completed drag reaches the result without replaying the open clip');
 w.resetToIdle();assert.ok(w.document.getElementById('scr-idle').classList.contains('active'));
-// Winning prize: the cinematic clip (bundled Zeratu summon when no clip is registered) plays full screen with
-// sound and cannot be interrupted; its end reveals the v5 AE win video (no purple flash/confetti, fanfare only).
-// Participation goes straight to the card result.
-const stage=w.document.getElementById('summon-stage'),summon=w.document.getElementById('summon-video'),winVideo=w.document.getElementById('win-video');
-let summonPlays=0,winPlays=0;summon.play=async()=>{summonPlays++;};winVideo.play=async()=>{winPlays++;};
-evaluate("var cues=[];ScrollSound.has=n=>n==='summon';ScrollSound.cue=(n,o)=>{cues.push([n,o]);return true;}");
-evaluate("var sfx=[];playSfx=n=>sfx.push(n);");
-const confetti=w.document.getElementById('confetti'),confettiBefore=confetti.children.length,result=w.document.getElementById('scr-result');
+// Winning prize without registered media: straight to the gold result card (no cinematic, no v5 win video).
+// Registered 특별/당첨 영상 are exercised in the real browser (scripts/test-win-browser.cjs).
+const stage=w.document.getElementById('summon-stage'),summon=w.document.getElementById('summon-video'),result=w.document.getElementById('scr-result');
+let summonPlays=0;summon.play=async()=>{summonPlays++;};
 evaluate('stock={ip1:[1,0]}');w.document.getElementById('idle-banner').click();w.chooseScroll(0);w.openSelectedScroll();
 gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);
-assert.equal(summonPlays,1);assert.ok(stage.classList.contains('active'));assert.equal(summon.muted,true); // Web Audio carries the sound
-Object.defineProperty(summon,'currentTime',{value:.4,configurable:true});summon.dispatchEvent(new w.Event('playing'));
-assert.deepEqual(evaluate('JSON.stringify(cues)'),'[["summon",0.4]]');
-assert.equal(winPlays,0);assert.ok(w.document.getElementById('scr-open').classList.contains('active'));
-w.resetToIdle();assert.ok(w.document.getElementById('scr-open').classList.contains('active')); // ignored while the clip plays
-summon.dispatchEvent(new w.Event('ended'));
-assert.ok(result.classList.contains('active'));assert.ok(result.classList.contains('oap-win'));assert.equal(winPlays,1);
-assert.equal(confetti.children.length,confettiBefore);assert.ok(evaluate('sfx.includes("fanfare")'));
-assert.match(w.document.getElementById('win-staff').textContent,/^SHOW THIS SCREEN TO STAFFNo\. \d+ · \d\d:\d\d:\d\d$/);
-assert.ok(stage.classList.contains('fading'));w.resetToIdle();assert.equal(stage.classList.contains('active'),false);
-assert.ok(winVideo.hasAttribute('src'),'returning home must not strip the win video source');
-// Without Web Audio the clip's own track is unmuted instead.
-evaluate("ScrollSound.has=()=>false");evaluate('stock={ip1:[1,0]}');w.document.getElementById('idle-banner').click();w.chooseScroll(2);w.openSelectedScroll();
-gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);assert.equal(summon.muted,false);assert.equal(summonPlays,2);
-summon.dispatchEvent(new w.Event('ended'));assert.equal(winPlays,2);w.resetToIdle();
+assert.ok(result.classList.contains('active'));assert.equal(result.classList.contains('oap-win'),false);assert.equal(summonPlays,0);assert.equal(stage.classList.contains('active'),false);
+assert.equal(w.document.querySelector('#scr-result h2').textContent,'경품 당첨!');
+assert.ok(Math.abs(evaluate('resultDeadline-Date.now()')-7000)<300,'결과 복귀 defaults to 7 s');
+w.resetToIdle();
+// Admin: winning rows offer 특별/당첨 영상, participation rows 상품/클릭 팝업 영상; the kind switch swaps them.
+w.renderAdmIps();
+const rows=[...w.document.querySelectorAll('#pane-ips .figure-admin-media')];
+assert.deepEqual(rows.map(m=>m.dataset.kind),['figure','participation']);
+assert.match(rows[0].querySelector('.media-figure').textContent,/특별 영상.*당첨 영상/);assert.match(rows[0].querySelector('.media-participation').textContent,/상품 영상.*클릭 팝업 영상/);
+const kindSelect=w.document.querySelectorAll('#pane-ips .prize-edit-row select')[1];kindSelect.value='figure';kindSelect.dispatchEvent(new w.Event('change'));assert.equal(rows[1].dataset.kind,'figure');
+kindSelect.value='participation';kindSelect.dispatchEvent(new w.Event('change'));
+// Settings: the legacy draw-return field is now 결과 복귀(초), editable and saved (min 3).
+w.renderAdmSettings();
+const ret=w.document.getElementById('set-drawidle');
+assert.equal(ret.disabled,false);assert.equal(ret.closest('.adm-row').querySelector('label').textContent,'결과 복귀(초)');assert.equal(ret.value,'7');
+ret.value='9';w.saveSettings();assert.equal(evaluate('cfg.resultReturnSec'),9);
+ret.value='1';w.saveSettings();assert.equal(evaluate('cfg.resultReturnSec'),3);
+evaluate('cfg.resultReturnSec=9');
 evaluate('stock={ip1:[0,3]}');w.document.getElementById('idle-banner').click();w.chooseScroll(1);w.openSelectedScroll();
 gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);
-assert.equal(summonPlays,2);assert.ok(result.classList.contains('active'));assert.equal(result.classList.contains('oap-win'),false);assert.equal(stage.classList.contains('active'),false);
-console.log('PASS: winning prize plays its cinematic clip first (uninterruptible, cued audio), then the v5 win video (no confetti, fanfare, staff serial, source kept); participation skips both');
+assert.ok(result.classList.contains('active'));assert.equal(result.classList.contains('oap-win'),false);assert.equal(summonPlays,0);
+assert.ok(Math.abs(evaluate('resultDeadline-Date.now()')-9000)<300,'participation follows 결과 복귀 too');
+evaluate('cfg.resultReturnSec=7');
+console.log('PASS: winning prize without media shows the gold card (no cinematic/v5); admin 특별/당첨 vs 상품/팝업 slots by kind; 결과 복귀(초) editable, saved (min 3) and applied to both results');
 // Single-track BGM: the chosen slot keeps looping across screen changes without restarts or volume resets; per-screen mode switches slots.
 const bgm=evaluate('bgmEl'),bgmCalls={};
 for(const k of ['idle','select','play']){bgmCalls[k]={play:0,pause:0};bgm[k].play=async()=>{bgmCalls[k].play++;Object.defineProperty(bgm[k],'paused',{value:false,configurable:true});};bgm[k].pause=()=>{bgmCalls[k].pause++;Object.defineProperty(bgm[k],'paused',{value:true,configurable:true});};}
@@ -205,6 +206,6 @@ const realSave=w.saveCfg;w.saveCfg=()=>false;w.saveFigureRules();w.saveCfg=realS
 assert.equal(evaluate('figureProbabilityEnabled()'),false);
 assert.equal(evaluate('figurePercent()'),23.5);
 console.log('PASS: mode toggle, stored percentage retention, reload, legacy defaults, invalid input and save failure rollback without inventory changes');
-console.log('PASS: actual DOM start/select/open/result/home journey, double-draw guard, five-second timer and admin probability/media controls');
+console.log('PASS: actual DOM start/select/open/result/home journey, double-draw guard, result-return timer and admin probability/media controls');
 // Drain boot/media promise callbacks before disposing the document.
 setImmediate(()=>dom.window.close());
