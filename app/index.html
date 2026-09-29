@@ -559,7 +559,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v16';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v17';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1438,7 +1438,7 @@ function renderAdmSettings(){
   <div class="adm-card"><h4>대기 영상 (전체 1회씩 무작위 순환)</h4>
     ${idleVidRows}
     <div class="adm-row" style="margin-top:8px"><button class="adm-btn sec" onclick="addIdleVideo()">+ 영상 추가</button></div>
-    <div class="muted-note">대기화면에 들어갈 때마다 랜덤으로 하나 재생(직전과 다른 영상) · 세로 MP4 무음 · 최대 150MB</div>
+    <div class="muted-note">대기 중에는 영상이 끝날 때마다 다음 영상으로 넘어감 · 목록 전체를 무작위 순서로 한 번씩 재생한 뒤 다시 섞음(직전과 다른 영상부터) · 세로 MP4 무음 · 최대 150MB</div>
   </div>
   <div class="adm-card"><h4>뽑기 NPC (여러 개 = 랜덤 표시)</h4>
     ${npcRows}

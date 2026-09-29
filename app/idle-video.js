@@ -10,6 +10,14 @@ class IdleVideoDeck {
       video.addEventListener('waiting',()=>{
         if(this.active?.video===video&&this.visible)this.record('waiting',this.active);
       });
+      // While the idle screen stays up, each clip plays once and hands over to the prepared next clip
+      // (shuffle-bag order from pick). A single clip, or a next clip not ready yet, simply loops again.
+      video.addEventListener('ended',()=>{
+        if(this.active?.video!==video||!this.visible||this.suspended)return;
+        this.record('ended',this.active);
+        if(this.next&&this.next.state==='ready'&&this.next.video.readyState>=2){this.enter();return;}
+        video.currentTime=0;video.play().catch(e=>this.failed(this.active,e));
+      });
       video.addEventListener('playing',()=>{
         if(this.active?.video===video&&this.visible){
           this.record('playing',this.active);
@@ -131,6 +139,8 @@ class IdleVideoDeck {
     if(!advance&&this.active){this.resume();return this.active.attached;}
     const previous=this.active,next=this.next||this.create(this.videos.find(v=>v!==previous?.video));
     this.next=null;this.active=next;
+    // Loop only when there is nothing to switch to; otherwise the ended event advances the deck.
+    if(next)next.video.loop=this.list().length<2;
     const started=performance.now();
     if(next){next.enteredAt=started;next.frameLogged=false;}
     const warm=!!next&&next.state==='ready'&&!next.video.seeking&&next.video.readyState>=2;

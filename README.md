@@ -3,7 +3,7 @@
 Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 - 프로젝트 시작일: 2026-09-23
-- 현재 버전: `swc-apac-v16` / 캐시: `swc2026-apac-lucky-draw-v16`
+- 현재 버전: `swc-apac-v17` / 캐시: `swc2026-apac-lucky-draw-v17`
 - 기반 커밋: `ac2d609cb584ce21ed35a8b32183f80605828791` (Figure Draw v32 기능 + 사용자 확인 문서)
 - 작업 폴더: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`
 - 새 저장소: https://github.com/SSuperWasabi/swc2026-apac-cup-lucky-draw
@@ -73,6 +73,7 @@ node scripts/test-open-browser.cjs
 node scripts/test-win-browser.cjs
 node scripts/test-transition-browser.cjs
 node scripts/test-bgm-playlist-browser.cjs
+node scripts/test-idle-rotation-browser.cjs
 ```
 
 브라우저 검사는 격리된 Chrome 프로필과 임시 로컬 서버를 사용하며 실제 운영 데이터에 접근하지 않는다. 인코딩 검사는 `node scripts/test-scroll-encoding.cjs`이며 로컬 ffmpeg 또는 `FFMPEG` 환경변수가 필요하다. `test-tools/package-lock.json`은 검증 의존성을 고정한다.
