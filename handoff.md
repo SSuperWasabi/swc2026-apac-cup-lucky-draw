@@ -285,6 +285,7 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
   - 업로드용 파일: `resource/oap/upload-ready/prize-videos/product-video_<id>.mp4`
   - 제라투 특별 영상: `resource/oap/upload-ready/special-videos/special-video_zeratu-figure.mp4`
   - 검수 시트: `resource/oap/mockups/prize-videos-t6.png`
+  - 제라투 상품 영상은 같은 날 사용자가 준 새 이미지로 재렌더했다(이전 파일은 `-v1`로 보관).
 - **화면 전환** (`docs/oap-spec/transition/`, `app/transition.js`):
   - AE `TRANS_ASIA` 알파 시퀀스를 색/알파 세로 스택 H.264로 만들고 WebGL로 합성한다.
   - 적용: 대기↔선택, 선택↔오픈, 결과→대기.

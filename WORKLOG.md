@@ -1,5 +1,14 @@
 # 작업 일지
 
+## 2026-09-29 — 제라투 상품 영상 이미지 교체
+
+- 사용자가 `resource/lucky draw items/2nd 25ea_Zeratu Figure/`에 새 제라투 이미지(1025×1535, 투명 배경)를 넣었다.
+- 알파 경계로 트림(1025×1409)한 뒤 `render-prizes.jsx`로 12초 재렌더(148초)하고 1024×1366 High 4.1(CRF 18, 5.4MB)로 인코딩했다.
+- `resource/oap/upload-ready/prize-videos/product-video_zeratu-figure.mp4`를 교체했다.
+- 이전 파일 보관:
+  - 누끼: `prize-cutouts(-trimmed)/zeratu-figure-v1.png`
+  - 영상: `ae-work/render/prizes/product-video_zeratu-figure-v1.mp4`
+
 ## 2026-09-29 — 3등급 추첨, 상품 영상 7종, 화면 전환 (swc-apac-v10)
 
 - 사용자 결정 반영:
