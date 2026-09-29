@@ -318,6 +318,7 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
 },true);
 // The grid is built once; re-rendering would restart the card entrance animation.
 const screenTransition=new ScreenTransition(document.getElementById('transition-canvas'),document.getElementById('transition-video'));
+if(screenTransition.available)screenTransition.warm();
 // Screen-to-screen moves play the AE transition; the admin switch (현장 운영) turns it off on site.
 function withTransition(fn){if(cfg.screenTransitions!==false&&!document.hidden)screenTransition.run(fn);else fn();}
 const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
@@ -498,8 +499,52 @@ async function uploadFigureVideo(ii,pi,field){
   scheduleResultLoop();toast('영상 등록됨');renderAdmIps();
 }
 function removeFigureVideo(ii,pi,field){const p=cfg.ips[ii].prizes[pi],old=p[field];delete p[field];if(!saveCfg()){p[field]=old;toast('설정 저장 실패');return;}scheduleResultLoop();renderAdmIps();}
+// Effect sounds: a file that decodes on the uploading device is stored as 16-bit WAV, so a PC-made backup
+// (e.g. an .ogg Chrome can play) still plays on iPad. The admin rows show what each slot holds on this device.
+const SFX_SLOTS=['pick','win','special','participation'];
+const sfxInfo={};
+function encodeWav(buffer){
+  const ch=Math.min(2,buffer.numberOfChannels),rate=buffer.sampleRate,n=buffer.length,out=new DataView(new ArrayBuffer(44+n*ch*2));
+  const text=(o,s)=>{for(let i=0;i<s.length;i++)out.setUint8(o+i,s.charCodeAt(i));};
+  text(0,'RIFF');out.setUint32(4,36+n*ch*2,true);text(8,'WAVEfmt ');out.setUint32(16,16,true);out.setUint16(20,1,true);out.setUint16(22,ch,true);
+  out.setUint32(24,rate,true);out.setUint32(28,rate*ch*2,true);out.setUint16(32,ch*2,true);out.setUint16(34,16,true);text(36,'data');out.setUint32(40,n*ch*2,true);
+  const data=[...Array(ch)].map((_,c)=>buffer.getChannelData(c));
+  for(let i=0,o=44;i<n;i++)for(let c=0;c<ch;c++,o+=2){const v=Math.max(-1,Math.min(1,data[c][i]));out.setInt16(o,v<0?v*0x8000:v*0x7fff,true);}
+  return out.buffer;
+}
+async function refreshSfxInfo(){
+  for(const k of SFX_SLOTS){const d=await idbGet('sfx_'+k);sfxInfo[k]=d?{name:d.name||'업로드 파일',ok:!!sfxBuf[k],sec:sfxBuf[k]?sfxBuf[k].duration:null}:null;}
+}
+const baseLoadSfx=loadSfx;
+loadSfx=async function(){await baseLoadSfx();await refreshSfxInfo();};
+const baseUploadMedia=uploadMedia;
+uploadMedia=async function(key,accept){
+  if(!key.startsWith('sfx_'))return baseUploadMedia(key,accept);
+  const f=await pickFile(accept);if(!f)return;
+  if(f.size>30*1024*1024){toast('30MB 이하만 가능');return;}
+  const buf=await fileToArrayBuffer(f);if(!buf){toast('파일 읽기 실패');return;}
+  let decoded=null;try{decoded=await audioCtx().decodeAudioData(buf.slice(0));}catch(e){}
+  if(!decoded){toast('이 기기에서 재생할 수 없는 소리 형식입니다 — mp3/wav/m4a로 올려 주세요');return;}
+  const wav=decoded.duration<=30?encodeWav(decoded):null;
+  const ok=await idbPut(key,{buf:wav||buf,type:wav?'audio/wav':(f.type||'audio/mpeg'),name:f.name});
+  if(!ok){toast('저장 실패 — 용량 초과/브라우저 제한');return;}
+  await loadSfx();renderAdmSettings();toast('업로드 완료');
+};
+const baseDelMedia=delMedia;
+delMedia=async function(key){await baseDelMedia(key);if(key.startsWith('sfx_')){await refreshSfxInfo();renderAdmSettings();}};
+function sfxStatusText(k){
+  const i=sfxInfo[k];
+  if(!i)return ['sfx-none','미등록 · 기본음'];
+  if(!i.ok)return ['sfx-bad','⚠ 이 기기에서 재생 불가 — 다시 올려 주세요'];
+  return ['sfx-ok','✓ '+i.name+(i.sec!=null?' · '+i.sec.toFixed(1)+'초':'')];
+}
 renderAdmSettings = function(){
   figureBase.renderAdmSettings();
+  for(const k of SFX_SLOTS){
+    const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('sfx_${k}'"]`);if(!btn)continue;
+    const [cls,label]=sfxStatusText(k),span=document.createElement('span');span.className='sfx-status '+cls;span.textContent=label;span.dataset.sfx=k;
+    btn.closest('.adm-row').appendChild(span);
+  }
   const root=document.getElementById('pane-settings'),card=document.createElement('div');card.className='adm-card';
   card.innerHTML=`<h4>추첨 설정</h4><div class="adm-row"><label for="hide-scroll-selection">소환서 선택 화면 숨김</label><input id="hide-scroll-selection" type="checkbox" role="switch" ${cfg.hideScrollSelection===true?'checked':''} onchange="saveScrollSelectionVisibility()"></div><p class="figure-rule-note">켜면 메인에서 소환서를 자동 선택하여 개봉 화면으로 바로 이동합니다. 변경 즉시 저장됩니다.</p><div class="adm-row"><label for="figure-probability-enabled">상급 당첨 확률 사용</label><input id="figure-probability-enabled" type="checkbox" role="switch" ${figureProbabilityEnabled()?'checked':''} onchange="updateFigureRuleInputs()" style="flex:none;width:24px;height:24px"></div><div class="adm-row"><label for="figure-percent">상급 확률 (%)</label><input id="figure-percent" type="number" min="0" max="100" step="any" value="${figurePercent()}" ${figureProbabilityEnabled()?'':'disabled'}></div><p id="figure-mode-note" class="figure-rule-note" aria-live="polite"></p><p class="figure-rule-note">소환서 번호는 확률에 영향을 주지 않습니다. 결과 화면 복귀 시간은 기본 설정의 결과 복귀(초)를 따릅니다. 변경 후 저장 버튼을 눌러 적용하세요.</p><button class="adm-btn pri" onclick="saveFigureRules()">추첨 방식 저장</button>`;root.prepend(card);updateFigureRuleInputs();
   const visibility=document.createElement('div');visibility.className='adm-card selection-visibility-card';

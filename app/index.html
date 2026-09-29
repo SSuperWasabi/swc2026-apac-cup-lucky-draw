@@ -559,7 +559,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v17';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v18';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1274,12 +1274,13 @@ async function buildExportPart(){
     for(const key of job.plan[job.idx]){
       const value=await idbGet(key);
       let bytes=null, kind, type='';
+      let name;
       if(typeof value==='string'){ kind='image'; bytes=enc.encode(value); }
-      else if(value && value.buf){ kind='buf'; type=value.type||''; bytes=new Uint8Array(value.buf); }
+      else if(value && value.buf){ kind='buf'; type=value.type||''; name=value.name; bytes=new Uint8Array(value.buf); }
       else if(value instanceof Blob){ kind='buf'; type=value.type||''; bytes=new Uint8Array(await value.arrayBuffer()); }
       else if(value instanceof ArrayBuffer){ kind='buf'; bytes=new Uint8Array(value); }
       else continue;
-      media.push({ key:String(key), kind, type, off, len:bytes.length });
+      media.push({ key:String(key), kind, type, off, len:bytes.length, ...(name?{name}:{}) });
       parts.push(bytes); off+=bytes.length;
     }
     // 설정·재고·로그는 1번 파일에만 담는다
@@ -1369,7 +1370,7 @@ async function importBackup(){
     toast('복원 중… (파일이 크면 시간이 걸립니다)');
     const buf=await fileToArrayBuffer(f); if(!buf) throw new Error('파일을 읽을 수 없습니다');
     const c=await applyBackup(buf);
-    alert(`복원 완료${c.parts>1?` (파일 ${c.part}/${c.parts})`:''}${c.scope==='novideo'?' · 영상 제외 — 이 기기 영상 유지':''}\n📷 이미지 ${c.img} · 🔊 오디오 ${c.audio} · 🎬 영상/기타 ${c.other}${c.parts>1&&c.part<c.parts?`\n\n▶ 새로고침 후 ${c.part+1}번 파일도 이어서 가져오세요!`:''}\n확인을 누르면 새로고침합니다.`);
+    alert(`복원 완료${c.parts>1?` (파일 ${c.part}/${c.parts})`:''}${c.scope==='novideo'?' · 영상 제외 — 이 기기 영상 유지':''}\n📷 이미지 ${c.img} · 🔊 오디오 ${c.audio} · 🎬 영상/기타 ${c.other}${c.failed&&c.failed.length?`\n⚠ 저장 실패 ${c.failed.length}개 (저장 공간 부족 가능): ${c.failed.slice(0,5).join(', ')}`:''}${c.parts>1&&c.part<c.parts?`\n\n▶ 새로고침 후 ${c.part+1}번 파일도 이어서 가져오세요!`:''}\n확인을 누르면 새로고침합니다.`);
     location.reload();
   }catch(e){ toast('복원 실패: '+((e&&e.message)||e)); }
 }
@@ -1405,12 +1406,13 @@ async function applyBackup(buf){
       for(const k of keys){ if(!keep.has(String(k))) await idbDel(k); }
     } else { await idbClear(); }
   }
+  const failed=[];
   for(const m of (manifest.media||[])){
     const slice=u8.subarray(base+m.off, base+m.off+m.len);
-    if(m.kind==='image') await idbPut(m.key, dec.decode(slice));
-    else await idbPut(m.key, { buf: slice.slice().buffer, type:m.type||'' });
+    const ok = m.kind==='image' ? await idbPut(m.key, dec.decode(slice)) : await idbPut(m.key, { buf: slice.slice().buffer, type:m.type||'', ...(m.name?{name:m.name}:{}) });
+    if(!ok) failed.push(m.key); // 저장 공간 부족 등: 조용히 빠지지 않게 복원 결과에 표시
   }
-  const c=summarizeMedia(manifest.media||[]); c.scope=scope; c.part=manifest.part||1; c.parts=manifest.parts||1;
+  const c=summarizeMedia(manifest.media||[]); c.scope=scope; c.part=manifest.part||1; c.parts=manifest.parts||1; c.failed=failed;
   return c;
 }
 

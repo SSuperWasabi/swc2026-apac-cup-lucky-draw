@@ -7,11 +7,11 @@ class ScreenTransition {
   constructor(canvas, video) {
     this.canvas = canvas;
     this.video = video;
-    // Frames 11-48 of 61 cover the screen completely (alpha >= 254).
-    this.coverAt = 13 / 30;
-    this.revealAt = 48 / 30;
-    // Played 1.8x faster than authored (user decision); cover/reveal points are in media time.
-    this.rate = 1.8;
+    // The file has the 1.8x speed-up baked in (user decision, v18): 33 frames at 30 fps, so iPad decodes at the
+    // normal rate. Frames 6-26 cover the screen completely (alpha >= 254).
+    this.coverAt = 7 / 30;
+    this.revealAt = 26 / 30;
+    this.rate = 1;
     this.busy = false;
     this.gl = null;
     this.revealed = [];
@@ -19,6 +19,22 @@ class ScreenTransition {
   }
 
   get available() { return !!this.gl; }
+
+  // Hold the whole clip in memory (no Range/service-worker streaming mid-transition) and run the decoder once,
+  // so the first real transition starts on an already decoded first frame.
+  async warm() {
+    const v = this.video;
+    try {
+      const response = await fetch(v.getAttribute('src'));
+      if (response.ok) { const url = URL.createObjectURL(await response.blob()); if (!this.busy) { v.src = url; v.load(); } }
+    } catch (e) { /* keep the network source */ }
+    if (this.busy) return;
+    try {
+      await v.play();
+      await new Promise(resolve => { if (typeof v.requestVideoFrameCallback === 'function') v.requestVideoFrameCallback(() => resolve()); else setTimeout(resolve, 60); });
+    } catch (e) { /* autoplay refused: the first run starts it */ }
+    if (!this.busy) { v.pause(); try { v.currentTime = 0; } catch (e) { /* not seekable yet */ } }
+  }
 
   setupGl() {
     const gl = this.canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
@@ -77,6 +93,8 @@ class ScreenTransition {
       cover(); reveal();
       clearTimeout(watchdog);
       v.pause();
+      // Rewind now so the next transition starts without a seek.
+      try { v.currentTime = 0; } catch (e) { /* not seekable */ }
       this.canvas.classList.remove('is-active');
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
       this.busy = false;
@@ -94,7 +112,7 @@ class ScreenTransition {
     v.onended = finish;
     this.resize();
     this.canvas.classList.add('is-active');
-    try { v.currentTime = 0; } catch (e) { /* not seekable yet */ }
+    if (v.currentTime !== 0) { try { v.currentTime = 0; } catch (e) { /* not seekable yet */ } }
     v.playbackRate = this.rate;
     Promise.resolve().then(() => v.play()).then(() => this.frame(tick), finish);
   }

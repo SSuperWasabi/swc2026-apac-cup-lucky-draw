@@ -136,6 +136,18 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
    const loaded=!!sfxBuf.participation;await delMedia('sfx_participation');renderAdmSettings();return {loaded,afterDelete:!!sfxBuf.participation,row:!!document.querySelector('[onclick*="sfx_participation"]')};});
   assert.deepEqual(slot,{loaded:true,afterDelete:false,row:true});
   console.log('PASS: 상급 -> 스페셜, 일반 -> 일반당첨, 참가상 -> 참가상 효과음 (admin slot decodes uploads, 삭제 clears)');
+
+  // 6) An effect sound uploaded through the admin is stored as WAV with its file name (plays on iPad even when the
+  //    source format is PC-only), the row shows it, and an undecodable slot is flagged.
+  const [chooser]=await Promise.all([page.waitForEvent('filechooser'),page.evaluate(()=>{uploadMedia('sfx_win','audio/*');})]);
+  await chooser.setFiles(path.resolve('app/assets/figure/zeratu-summon.wav'));
+  await page.waitForFunction(()=>document.querySelector('.sfx-status[data-sfx=win]')?.textContent.startsWith('✓'),null,{timeout:10000});
+  const sfx=await page.evaluate(async()=>{const d=await idbGet('sfx_win');
+   await idbPut('sfx_pick',{buf:new Uint8Array(16).buffer,type:'audio/ogg',name:'broken.ogg'});await loadSfx();renderAdmSettings();
+   return {type:d.type,name:d.name,row:document.querySelector('.sfx-status[data-sfx=win]').textContent,bad:document.querySelector('.sfx-status[data-sfx=pick]').className};});
+  assert.equal(sfx.type,'audio/wav');assert.equal(sfx.name,'zeratu-summon.wav');assert.match(sfx.row,/^✓ zeratu-summon\.wav · \d+\.\d초$/);assert.match(sfx.bad,/sfx-bad/);
+  await page.evaluate(()=>delMedia('sfx_pick'));
+  console.log('PASS: effect-sound upload stored as WAV with its name; admin rows show registered/default/unplayable');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

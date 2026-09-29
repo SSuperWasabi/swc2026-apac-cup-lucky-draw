@@ -234,3 +234,5 @@
 .transition-source{position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1}
 /* BGM playlist rows: the first ▲ and last ▼ cannot move. */
 .figure-bgm-mode .adm-btn:disabled{opacity:.35;cursor:default}
+/* Admin effect-sound rows: what each slot holds on this device. */
+.sfx-status{flex:1;min-width:0;margin-left:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sfx-ok{color:#9be89b}.sfx-none{color:#b3acd6}.sfx-bad{color:#ff8a80;font-weight:700}
