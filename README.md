@@ -12,7 +12,7 @@ Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 ## 지금 완료한 범위
 
-초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. v10에서 상품을 상급/일반/참가상 3등급으로 나눴고, 모든 상품에 특별 영상·상품 영상을 등록한다(클릭 팝업 영상 삭제). 화면 이동에는 AE 전환 영상을 넣었다([transition](docs/oap-spec/transition/README.md)). 참가상 결과 카드는 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
+초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. v10에서 상품을 상급/일반/참가상 3등급으로 나눴고, 모든 상품에 특별 영상·상품 영상을 등록한다(클릭 팝업 영상 삭제). 화면 이동에는 AE 전환 영상을 1.8배속으로 넣었다(선택 → 오픈 제외, [transition](docs/oap-spec/transition/README.md)). v12~v13에서 긴 특별 영상이 11초에 끊기던 문제를 고쳤고, 당첨 효과음을 등급별(스페셜/일반당첨/참가상)로 나눴다. v14에서 메인 타이틀에 검은 소프트 섀도를 넣었다. 현재 상태와 현장 준비 목록은 [handoff.md](handoff.md) 21절에 있다. 참가상 결과 카드는 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
 
 기존 앱 코드·Git 이력·테스트·로컬 리소스를 복제하고 새 앱 식별자를 분리했다. 기존 앱 저장소와 운영 데이터는 변경하지 않는다. 새 앱은 미디어 등록 없음, 재고 0, 추첨 기록 없음으로 시작한다. 기본 두 상품 행은 등록 안내용 빈 틀이며 운영 경품이 아니다.
 
