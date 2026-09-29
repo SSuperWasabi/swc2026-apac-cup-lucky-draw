@@ -1,6 +1,7 @@
 // Real Chrome journeys through the winning-prize media set per prize in admin (IndexedDB):
 // 특별 영상 (cinematic, optional) -> 당첨 영상 (OAP v5 win screen, optional) -> 결과 복귀(초).
 const {chromium}=require('../.tools/node_modules/playwright-core');
+const {spawnSync}=require('node:child_process');
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve('app');
 const server=http.createServer((req,res)=>{
@@ -103,6 +104,34 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:8000});back=(Date.now()-entered)/1000;
   assert.ok(back>3.5&&back<4.8,`결과 복귀 4 s applied (${back}s)`);
   console.log('PASS: 결과 복귀(초)=4 returns the win screen after %s s',back.toFixed(1));
+
+  // 4) A 특별 영상 longer than 11 s plays to its end (the watchdog must follow the real duration, not an 8 s guess).
+  const longClip=path.resolve('.tools/fixtures/special-15s.mp4');
+  if(!fs.existsSync(longClip)){fs.mkdirSync(path.dirname(longClip),{recursive:true});
+   spawnSync(path.resolve('.tools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe'),['-nostdin','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=540x720:rate=30:duration=15','-f','lavfi','-i','sine=frequency=440:duration=15','-c:v','libx264','-pix_fmt','yuv420p','-crf','30','-c:a','aac','-b:a','64k','-movflags','+faststart',longClip]);}
+  await page.evaluate(async b64=>{const bin=atob(b64),buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);await idbPut('test_long',{buf:buf.buffer,type:'video/mp4'});},fs.readFileSync(longClip).toString('base64'));
+  await page.evaluate(()=>{cfg.resultReturnSec=7;window.__sfx=[];const base=playSfx;playSfx=k=>{window.__sfx.push(k);return base(k);};});
+  await start({specialVideoKey:'test_long',kind:'figure'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>document.getElementById('summon-stage').classList.contains('active'),null,{timeout:15000});
+  await page.evaluate(()=>{window.__summonEnd=null;new MutationObserver(()=>{if(currentScreen==='scr-result'&&window.__summonEnd===null)window.__summonEnd=document.getElementById('summon-video').currentTime;}).observe(document.getElementById('scr-result'),{attributes:true,attributeFilter:['class']});});
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:25000});
+  const endAt=await page.evaluate(()=>window.__summonEnd);
+  assert.ok(endAt>14.8,`15 s 특별 영상 played to its end (left at t=${endAt})`);
+  console.log('PASS: 15 s 특별 영상 plays to the end (result at t=%s s)',endAt.toFixed(2));
+
+  // 5) Win sounds follow the grade: 상급 = 스페셜 당첨음 (fanfare), 일반 = 일반 당첨음 (win), 참가상 = none.
+  const sfxFor=async kind=>{
+   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+   await start({kind});await page.evaluate(()=>{window.__sfx=[];});
+   await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+   await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:15000});
+   const got=await page.evaluate(()=>window.__sfx.filter(k=>k!=='pick'));
+   await page.evaluate(()=>resetToIdle());return got;};
+  assert.deepEqual(await sfxFor('figure'),['fanfare'],'상급 plays the special win sound');
+  assert.deepEqual(await sfxFor('normal'),['win'],'일반 plays the normal win sound');
+  assert.deepEqual(await sfxFor('participation'),[],'참가상 plays no win sound');
+  console.log('PASS: 상급 -> 스페셜 당첨음, 일반 -> 일반 당첨음, 참가상 -> no win sound');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -108,9 +108,16 @@ function playSummon(epoch,task){
   v.muted=summonTrack?!!cfg.muted:true;v.volume=1;b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
   // iOS may refuse audible playback outside a gesture: fall back to a muted clip rather than skipping it.
   v.play().catch(()=>{if(v.muted)return endSummon(epoch);v.muted=true;v.play().catch(()=>endSummon(epoch));});b.play().catch(()=>{});
-  // Watchdog: a stalled clip must never trap the kiosk on this screen.
-  summonTimer=setTimeout(()=>endSummon(epoch),(Number.isFinite(v.duration)&&v.duration>0?v.duration:8)*1000+3000);
+  armSummonWatchdog(epoch);
 }
+// Watchdog: a stalled clip must never trap the kiosk on this screen. The source was just replaced, so the
+// duration is unknown here: re-arm from the remaining play time once metadata arrives and whenever playback
+// (re)starts, otherwise long clips were cut at 8 + 3 s.
+function armSummonWatchdog(epoch){
+  const v=summonVideos()[0],known=Number.isFinite(v.duration)&&v.duration>0;
+  clearTimeout(summonTimer);summonTimer=setTimeout(()=>endSummon(epoch),(known?Math.max(0,v.duration-v.currentTime):8)*1000+3000);
+}
+['loadedmetadata','playing'].forEach(type=>document.getElementById('summon-video').addEventListener(type,()=>{if(summonActive()&&summonEpoch>=0)armSummonWatchdog(summonEpoch);}));
 document.getElementById('summon-video').addEventListener('ended',()=>endSummon(summonEpoch));
 // Start the clip audio exactly where the picture (re)starts, and hold it while the picture stalls.
 document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack)ScrollSound.cue(summonClip,v.currentTime,!!cfg.muted);});
@@ -288,6 +295,8 @@ const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
 const winScreen=new WinScreen(document.getElementById('win-stage'),()=>resetToIdle());
 // On the AE win video the purple flash/bolts/confetti would sit on top of the design: keep only the fanfare.
 const baseSpecialFx=specialFx;
+// Win sounds by grade: 상급 = 스페셜 당첨음, 일반 = 일반 당첨음, 참가상 = none (not a win).
+showResult=function(){renderResult();go('scr-result');const r=lastResult;if(r.top||r.isLucky)specialFx();else if(r.high)playSfx('win');};
 specialFx=function(){if(document.getElementById('scr-result').classList.contains('oap-win')){playSfx('fanfare');return;}baseSpecialFx();};
 window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
