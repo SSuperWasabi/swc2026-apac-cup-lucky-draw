@@ -189,6 +189,8 @@
 #scr-idle .idle-headline{font-weight:900;letter-spacing:-.01em}
 #scr-idle .touch-banner{font-weight:800;letter-spacing:.04em}
 #scr-idle .copyright,#scr-idle .idle-credit,#scr-idle #idle-version{font-weight:500}
+/* Title legibility over any idle loop (option C, 2026-09-29): a soft black halo instead of the gold glow. */
+#scr-idle .idle-headline .ld-2{filter:drop-shadow(0 0 4px rgba(0,0,0,1)) drop-shadow(0 0 12px rgba(0,0,0,.95)) drop-shadow(0 6px 26px rgba(0,0,0,.85))}
 /* Unbounded runs ~8 em wide for "LUCKY DRAW": cap it at ~88% of the viewport. */
 #scr-idle .idle-headline .ld-2{font-size:min(10.3vw,8vh,105px)}
 @media(min-aspect-ratio:1/1){#scr-idle .idle-headline .ld-2{font-size:min(7vw,8vh)}}
