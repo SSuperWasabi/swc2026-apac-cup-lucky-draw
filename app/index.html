@@ -559,7 +559,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v12';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v13';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -961,9 +961,9 @@ function tone(freq,dur,type,vol,delay){ const c=audioCtx(); if(!c||cfg.muted)ret
 /* 효과음: 업로드 파일 우선, 없으면 기본 합성음(WebAudio) 폴백
    ※ iOS는 blob <audio>를 재생 완료 후 되감아 재생하면 두 번째부터 무음이 되는 결함이 있어,
    업로드 효과음은 WebAudio 버퍼로 디코드해 매번 새 소스로 재생한다(재사용 없음 = 항상 소리남) */
-const sfxEl={ pick:new Audio(), win:new Audio(), special:new Audio() }; const sfxUrls={}; const sfxBuf={};
+const sfxEl={ pick:new Audio(), win:new Audio(), special:new Audio(), participation:new Audio() }; const sfxUrls={}; const sfxBuf={};
 async function sfxArrayBuffer(d){ try{ if(typeof d==='string'){ const b=dataURLtoBlob(d); return b? await b.arrayBuffer():null; } if(d&&d.buf) return d.buf.slice(0); const b=mediaBlob(d); return b? await b.arrayBuffer():null; }catch(e){ return null; } }
-async function loadSfx(){ for(const k of ['pick','win','special']){ const d=await idbGet('sfx_'+k); if(!d){ delete sfxBuf[k]; sfxEl[k].src=''; continue; }
+async function loadSfx(){ for(const k of ['pick','win','special','participation']){ const d=await idbGet('sfx_'+k); if(!d){ delete sfxBuf[k]; sfxEl[k].src=''; continue; }
   try{ const ab=await sfxArrayBuffer(d); const c=audioCtx(); if(ab&&c){ sfxBuf[k]=await c.decodeAudioData(ab); sfxEl[k].src=''; continue; } }catch(e){}
   /* 디코드 실패 시에만 <audio> 폴백 */
   delete sfxBuf[k]; if(sfxUrls[k]){try{URL.revokeObjectURL(sfxUrls[k]);}catch(e){}}
@@ -978,7 +978,7 @@ function playSfx(kind){
 }
 function playSfxReady(kind,c){
   if(cfg.muted)return;
-  const slot={pick:'pick',win:'win',fanfare:'special'}[kind];
+  const slot={pick:'pick',win:'win',fanfare:'special',participation:'participation'}[kind];
   const buf=slot&&sfxBuf[slot];
   if(buf&&c){ try{ const s=c.createBufferSource(), g=c.createGain(); s.buffer=buf; g.gain.value=.8; s.connect(g); g.connect(c.destination); s.start(); return; }catch(e){} }
   const a=slot&&sfxEl[slot];
@@ -987,6 +987,7 @@ function playSfxReady(kind,c){
   if(kind==='pick'){ tone(660,.12,'triangle',.18); }
   else if(kind==='win'){ tone(523,.18,'sine',.2); tone(784,.25,'sine',.18,.12); }
   else if(kind==='fanfare'){ [523,659,784,1047].forEach((f,i)=>tone(f,.3,'sawtooth',.16,i*.11)); tone(1047,.5,'sine',.14,.5); }
+  else if(kind==='participation'){ tone(523,.2,'sine',.14); tone(392,.34,'sine',.12,.16); }
 }
 /* BGM: 화면별 3슬롯 (대기 / 선택 / 뽑기), 루핑 */
 const bgmEl={ idle:new Audio(), select:new Audio(), play:new Audio() }; Object.values(bgmEl).forEach(a=>a.loop=true); let curBgm=null; const bgmUrls={};
@@ -1454,7 +1455,8 @@ function renderAdmSettings(){
     <div class="adm-row"><label>뽑기음</label><button class="adm-btn sec" onclick="uploadMedia('sfx_pick','audio/*')">업로드</button><button class="adm-btn dng" onclick="delMedia('sfx_pick')">삭제</button></div>
     <div class="adm-row"><label>일반당첨</label><button class="adm-btn sec" onclick="uploadMedia('sfx_win','audio/*')">업로드</button><button class="adm-btn dng" onclick="delMedia('sfx_win')">삭제</button></div>
     <div class="adm-row"><label>스페셜</label><button class="adm-btn sec" onclick="uploadMedia('sfx_special','audio/*')">업로드</button><button class="adm-btn dng" onclick="delMedia('sfx_special')">삭제</button></div>
-    <div class="muted-note">스페셜 = A·B·C·행운상 당첨 시 금빛 번개 사운드. 업로드 안 하면 기본 합성음 사용</div>
+    <div class="adm-row"><label>참가상</label><button class="adm-btn sec" onclick="uploadMedia('sfx_participation','audio/*')">업로드</button><button class="adm-btn dng" onclick="delMedia('sfx_participation')">삭제</button></div>
+    <div class="muted-note">스페셜 = 상급 당첨 · 일반당첨 = 일반 당첨 · 참가상 = 참가상 결과. 업로드 안 하면 기본 합성음 사용</div>
   </div>
   <div class="adm-card"><h4>설정 백업 / 복원</h4>
     <div class="adm-row" style="gap:10px">
@@ -1523,7 +1525,7 @@ async function uploadMedia(key,accept){
   const d=await fileToDataURL(f); if(!d)return; await idbPut(key,d); // 이미지 등은 dataURL
   toast('업로드 완료');
 }
-async function delMedia(key){ await idbDel(key); if(key.startsWith('bgm_')){ const slot=key.slice(4); bgmEl[slot]&&(bgmEl[slot].src=''); } else if(key.startsWith('sfx_')){ const slot=key.slice(4); sfxEl[slot]&&(sfxEl[slot].src=''); } else if(key==='idle_video'){ await bootIdle(); } toast('삭제됨'); }
+async function delMedia(key){ await idbDel(key); if(key.startsWith('bgm_')){ const slot=key.slice(4); bgmEl[slot]&&(bgmEl[slot].src=''); } else if(key.startsWith('sfx_')){ const slot=key.slice(4); delete sfxBuf[slot]; sfxEl[slot]&&(sfxEl[slot].src=''); } else if(key==='idle_video'){ await bootIdle(); } toast('삭제됨'); }
 /* 뽑기 NPC (이미지/영상 여러 개 → 랜덤 표시) */
 async function addNpc(accept,type){
   const f=await pickFile(accept); if(!f)return;

@@ -295,8 +295,8 @@ const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
 const winScreen=new WinScreen(document.getElementById('win-stage'),()=>resetToIdle());
 // On the AE win video the purple flash/bolts/confetti would sit on top of the design: keep only the fanfare.
 const baseSpecialFx=specialFx;
-// Win sounds by grade: 상급 = 스페셜 당첨음, 일반 = 일반 당첨음, 참가상 = none (not a win).
-showResult=function(){renderResult();go('scr-result');const r=lastResult;if(r.top||r.isLucky)specialFx();else if(r.high)playSfx('win');};
+// Win sounds by grade: 상급 = 스페셜, 일반 = 일반당첨, 참가상 = 참가상 (admin 효과음 slots).
+showResult=function(){renderResult();go('scr-result');const r=lastResult;if(r.top||r.isLucky)specialFx();else playSfx(r.high?'win':'participation');};
 specialFx=function(){if(document.getElementById('scr-result').classList.contains('oap-win')){playSfx('fanfare');return;}baseSpecialFx();};
 window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));

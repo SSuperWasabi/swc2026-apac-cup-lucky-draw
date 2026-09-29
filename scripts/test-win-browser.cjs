@@ -120,7 +120,7 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   assert.ok(endAt>14.8,`15 s 특별 영상 played to its end (left at t=${endAt})`);
   console.log('PASS: 15 s 특별 영상 plays to the end (result at t=%s s)',endAt.toFixed(2));
 
-  // 5) Win sounds follow the grade: 상급 = 스페셜 당첨음 (fanfare), 일반 = 일반 당첨음 (win), 참가상 = none.
+  // 5) Win sounds follow the grade: 상급 = 스페셜 (fanfare), 일반 = 일반당첨 (win), 참가상 = 참가상 (participation).
   const sfxFor=async kind=>{
    await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
    await start({kind});await page.evaluate(()=>{window.__sfx=[];});
@@ -130,8 +130,12 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
    await page.evaluate(()=>resetToIdle());return got;};
   assert.deepEqual(await sfxFor('figure'),['fanfare'],'상급 plays the special win sound');
   assert.deepEqual(await sfxFor('normal'),['win'],'일반 plays the normal win sound');
-  assert.deepEqual(await sfxFor('participation'),[],'참가상 plays no win sound');
-  console.log('PASS: 상급 -> 스페셜 당첨음, 일반 -> 일반 당첨음, 참가상 -> no win sound');
+  assert.deepEqual(await sfxFor('participation'),['participation'],'참가상 plays the 참가상 sound');
+  // The admin 참가상 slot decodes an upload, and 삭제 drops it at once (falls back to the built-in tone).
+  const slot=await page.evaluate(async()=>{const buf=await(await fetch('assets/figure/zeratu-summon.wav')).arrayBuffer();await idbPut('sfx_participation',{buf,type:'audio/wav'});await loadSfx();
+   const loaded=!!sfxBuf.participation;await delMedia('sfx_participation');renderAdmSettings();return {loaded,afterDelete:!!sfxBuf.participation,row:!!document.querySelector('[onclick*="sfx_participation"]')};});
+  assert.deepEqual(slot,{loaded:true,afterDelete:false,row:true});
+  console.log('PASS: 상급 -> 스페셜, 일반 -> 일반당첨, 참가상 -> 참가상 효과음 (admin slot decodes uploads, 삭제 clears)');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
