@@ -29,6 +29,8 @@ const state=page=>page.evaluate(()=>{
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1024,height:1366},deviceScaleFactor:2,serviceWorkers:'block'}) // iPad Pro 12.9 CSS size and DPR;
+  // Immediate screen swaps: the transition has its own suite (test-transition-browser). In-memory only.
+  await page.addInitScript(()=>document.addEventListener('DOMContentLoaded',()=>{if(typeof cfg!=='undefined')cfg.screenTransitions=false;}));
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'load'});
   await page.evaluate(()=>{stock={ip1:[0,10]};cfg.muted=true;cfg.idleTimeoutSec=600;refreshIdleSoldout(); // pixel checks outlast the 30 s idle return

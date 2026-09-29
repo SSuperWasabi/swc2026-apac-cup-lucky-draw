@@ -3,7 +3,7 @@
 Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 - 프로젝트 시작일: 2026-09-23
-- 현재 버전: `swc-apac-v9` / 캐시: `swc2026-apac-lucky-draw-v9`
+- 현재 버전: `swc-apac-v10` / 캐시: `swc2026-apac-lucky-draw-v10`
 - 기반 커밋: `ac2d609cb584ce21ed35a8b32183f80605828791` (Figure Draw v32 기능 + 사용자 확인 문서)
 - 작업 폴더: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`
 - 새 저장소: https://github.com/SSuperWasabi/swc2026-apac-cup-lucky-draw
@@ -12,7 +12,7 @@ Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 ## 지금 완료한 범위
 
-초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. 참가상 결과 화면과 화면 전환은 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
+초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. v10에서 상품을 상급/일반/참가상 3등급으로 나눴고, 모든 상품에 특별 영상·상품 영상을 등록한다(클릭 팝업 영상 삭제). 화면 이동에는 AE 전환 영상을 넣었다([transition](docs/oap-spec/transition/README.md)). 참가상 결과 카드는 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
 
 기존 앱 코드·Git 이력·테스트·로컬 리소스를 복제하고 새 앱 식별자를 분리했다. 기존 앱 저장소와 운영 데이터는 변경하지 않는다. 새 앱은 미디어 등록 없음, 재고 0, 추첨 기록 없음으로 시작한다. 기본 두 상품 행은 등록 안내용 빈 틀이며 운영 경품이 아니다.
 
@@ -71,6 +71,7 @@ node scripts/test-result-video-browser.cjs
 node scripts/test-choose-browser.cjs
 node scripts/test-open-browser.cjs
 node scripts/test-win-browser.cjs
+node scripts/test-transition-browser.cjs
 ```
 
 브라우저 검사는 격리된 Chrome 프로필과 임시 로컬 서버를 사용하며 실제 운영 데이터에 접근하지 않는다. 인코딩 검사는 `node scripts/test-scroll-encoding.cjs`이며 로컬 ffmpeg 또는 `FFMPEG` 환경변수가 필요하다. `test-tools/package-lock.json`은 검증 의존성을 고정한다.

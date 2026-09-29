@@ -21,9 +21,10 @@
     "seconds": 5.067,
     "note": "FRAME_V3 render: titles, logo, emblem, SLIDE bar baked; slot is pure black in every frame"
   },
+  "appliedShiftY": -64,
   "videoSlot": {
     "left": 140,
-    "top": 595,
+    "top": 531,
     "width": 1768,
     "height": 1768,
     "sourceSize": [
@@ -36,7 +37,7 @@
   },
   "instructionBar": {
     "left": 140,
-    "top": 2363,
+    "top": 2299,
     "width": 1768,
     "height": 120,
     "text": "SLIDE TO OPEN THE SCROLL",
@@ -44,12 +45,17 @@
   },
   "dragGuide": {
     "left": 284,
-    "top": 2175,
+    "top": 2111,
     "width": 1480,
     "height": 150,
     "source": "AE reserved area (futureDragGuide)"
   },
-  "autoOpen": "No on-screen button (removed v4 for layout balance). Enter on the scroll or a tap after a playback failure runs the 1.8x path.",
+  "autoOpen": {
+    "layout": "C (2026-09-28)",
+    "top": 2472,
+    "height": 140,
+    "note": "compact AUTO OPEN pill centred under the SLIDE bar"
+  },
   "backButton": {
     "label": "← BACK",
     "note": "App control above the emblem, same style as the choose screen HOME pill"

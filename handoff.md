@@ -243,3 +243,73 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
 - 사용자 정정: 상품 등급은 **상급 / 일반 / 참가상** 3단계. 모든 상품(등급 무관)에 특별 영상·당첨 영상 설정, 기존 상품 이미지 등록 유지. 처음 기획대로 상품별 당첨 영상을 AE에서 개별 생성해 지정.
 - 등록 예정 상품(`resource/lucky draw items/`): 1st Rakan Statue 5, 2nd Zeratu Figure 25, 3rd Devilmon 40(쿠션·모자·머그·러그), 4th Random 3D Keychain 80. 누끼 22장 모두 투명 배경 PNG. 사용자 첨부 스틸과 대응하는 이미지: 라칸 01, 제라투 02, 쿠션 누끼1, 모자 누끼1, 머그, 러그, 키링 6종 세트(14).
 - 3등급의 추첨 규칙(확률·쿨다운·구간 배정 적용 범위), 당첨 영상 길이, 데빌몬 40개 배분 방식은 사용자 결정 대기.
+
+## 16. 3등급 추첨, 상품 영상 7종, 화면 전환 — 2026-09-29 (swc-apac-v10)
+
+### 사용자 결정
+
+1. 추첨 규칙은 제안대로 한다. 확률 조절은 상급 상품에만 필요하다.
+2. 상품 영상 길이는 12초.
+3. 상품명: RAKAN STATUE, ZERATU FIGURE, DEVILMON CUSHION/HAT/MUG/RUG, RANDOM 3D KEYCHAIN. 당첨 상품 폴더명과 같다.
+4. 데빌몬 4종은 각각 별도 상품으로 등록하고 수량을 나눈다(관리자에서 조정).
+5. 클릭 팝업 영상은 쓰지 않는 기능이라 삭제한다.
+   - **상품 영상** = 모든 상품의 전체 화면 당첨 화면(v5 사전 렌더).
+   - **특별 영상** = 상급 피규어 당첨 시 나오는 시네마틱.
+6. 오픈 화면:
+   - 소환서 영상 칸과 AUTO OPEN을 위로 올린다.
+   - 슬라이드 UI는 불투명도 75%, 글래스모피즘(애플 UI)으로 바꾼다.
+7. 화면 사이를 이동할 때마다 전환 영상을 넣는다.
+
+### 반영
+
+- **추첨** (`draw-engine.js`, `kindOf`):
+  - 상급(`figure`)만 확률·시간 제한·쿨다운 대상이다.
+  - 상급이 아닌 추첨은 일반(`normal`)과 참가상(`participation`)을 재고 비율로 뽑는다.
+  - 확률을 끄면 전체를 재고 비율로 뽑는다.
+  - `kind`가 없는 이전 데이터는 `tier`로 판단한다.
+- **관리자**:
+  - 드롭다운은 상급/일반/참가상이다.
+  - 모든 행에 특별 영상·상품 영상 칸이 있다.
+  - 팝업·카드 반복 영상 버튼은 없앴다.
+  - 설정 문구의 "피규어"는 "상급"으로 바꿨다.
+- **결과 화면**:
+  - 상급·일반은 영상이 없으면 금색 당첨 카드, 참가상은 "아쉽네요!" 카드다.
+  - 클릭 팝업 영상 코드·CSS는 삭제했다.
+- **오픈 화면** (`docs/oap-spec/open-v3/`):
+  - 영상 칸과 SLIDE 바를 64 master px(CSS 32px) 올려 프레임 영상을 AE에서 다시 렌더했다.
+  - AUTO OPEN도 같이 올렸다.
+  - 드래그 UI는 75% 유리 스타일이다.
+- **상품 영상** (`docs/oap-spec/win-v5/`, `scripts/ae/render-prizes.jsx`):
+  - 7종을 12초로 렌더하고 1024×1366 High 4.1로 인코딩했다.
+  - 누끼는 알파 경계로 여백을 잘라 넣었다(제라투가 작게 나오던 문제).
+  - 업로드용 파일: `resource/oap/upload-ready/prize-videos/product-video_<id>.mp4`
+  - 제라투 특별 영상: `resource/oap/upload-ready/special-videos/special-video_zeratu-figure.mp4`
+  - 검수 시트: `resource/oap/mockups/prize-videos-t6.png`
+- **화면 전환** (`docs/oap-spec/transition/`, `app/transition.js`):
+  - AE `TRANS_ASIA` 알파 시퀀스를 색/알파 세로 스택 H.264로 만들고 WebGL로 합성한다.
+  - 적용: 대기↔선택, 선택↔오픈, 결과→대기.
+  - 적용 안 함: 오픈→결과(흰 화면 + 시네마틱 유지).
+  - 관리자 `현장 운영 > 화면 전환 영상` 스위치로 끌 수 있다.
+  - 색은 AE 소스를 따른다. 이전 세로 MP4는 채도가 빠져 있었다.
+
+### 관리자 등록 순서 (현장 준비)
+
+1. IP·상품 탭에서 상품 7개를 등록한다.
+
+   | 상품 | 등급 | 특별 영상 | 상품 영상 | 수량(기획) |
+   | --- | --- | --- | --- | --- |
+   | RAKAN STATUE | 상급 | (없음, 추가 가능) | product-video_rakan-statue | 5 |
+   | ZERATU FIGURE | 상급 | special-video_zeratu-figure | product-video_zeratu-figure | 25 |
+   | DEVILMON CUSHION/HAT/MUG/RUG | 일반 | – | product-video_devilmon-* | 합계 40 |
+   | RANDOM 3D KEYCHAIN | 일반 | – | product-video_random-3d-keychain | 80 |
+
+2. 참가상 행과 수량을 필요에 따라 추가한다.
+3. 상급 확률(%)과 시간 제한을 설정한다.
+
+### 남은 확인
+
+- iPad 실기:
+  - 전환 영상 부하·첫 지연
+  - 오픈 화면 새 위치와 유리 UI
+  - 상품 영상 7종 업로드와 재생
+  - 특별 영상 소리

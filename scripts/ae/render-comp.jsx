@@ -2,6 +2,7 @@
 // Never saves the project. Expects a global JOB = {
 //   project, out, comp, start, duration,          // render span in seconds (comp null = refs only)
 //   hide: [layer names to disable before render], // optional
+//   moveY: { layerName: dy, ... },               // optional vertical shift in comp px
 //   refs: [{ comp, t, file }]                     // optional reference frames (as authored)
 // }.
 (function () {
@@ -57,6 +58,14 @@
     if (!JOB.comp) { app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES); status('ok'); app.endSuppressDialogs(false); return; } // refs only
     var comp = find(JOB.comp), hide = JOB.hide || [];
     for (var h = 0; h < hide.length; h++) { comp.layer(hide[h]).enabled = false; log.push('hidden: ' + hide[h]); }
+    var moves = JOB.moveY || {};
+    for (var name in moves) {
+      if (!moves.hasOwnProperty(name)) continue;
+      var pos = comp.layer(name).property('ADBE Transform Group').property('ADBE Position');
+      if (pos.numKeys > 0) throw new Error('Animated position, not shifted: ' + name);
+      var v = pos.value; v[1] += moves[name]; pos.setValue(v);
+      log.push('moved ' + name + ' by ' + moves[name] + ' -> y=' + v[1]);
+    }
 
     var rq = app.project.renderQueue;
     for (var n = 1; n <= rq.numItems; n++) if (rq.item(n).status === RQItemStatus.QUEUED) rq.item(n).render = false;

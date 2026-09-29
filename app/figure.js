@@ -76,7 +76,7 @@ function summonUnlock(){if(summonUnlocked)return;summonUnlocked=true;summonVideo
 // 당첨 영상 = optional full-screen win screen (without it the gold result card shows). Both are read from
 // IndexedDB as soon as the draw commits so the white flash lifts onto a ready frame.
 let summonDefaultSrc=null,summonClip='summon',winMediaTask=null;
-function winMedia(result){const m=result&&result.high?(result.media||result.prize):null;return {special:(m&&m.specialVideoKey)||null,win:(m&&m.winVideoKey)||null};}
+function winMedia(result){const m=result?(result.media||result.prize):null;return {special:(m&&m.specialVideoKey)||null,win:(m&&m.winVideoKey)||null};}
 function prepareWinMedia(result,epoch){
   if(winMediaTask&&winMediaTask.result===result)return winMediaTask;
   const keys=winMedia(result),task={result,special:null,clip:null};
@@ -212,7 +212,7 @@ function finishScrollReveal(){
   const epoch=figureEpoch,result=lastResult;
   const reveal=()=>{
     if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
-    const task=result&&result.high?prepareWinMedia(result,epoch):null;
+    const task=result?prepareWinMedia(result,epoch):null;
     // Winning prize: 특별 영상 first (endSummon -> showResult), otherwise straight to the result.
     if(task&&task.special)playSummon(epoch,task);else{showResult();startResultMedia();}
     whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
@@ -255,7 +255,7 @@ go = function(id){
   if(prevScreen==='scr-open'&&id!=='scr-open')openBackdrop.leave();
   if(prevScreen==='scr-result'&&id!=='scr-result')winScreen.stop();
   figureBase.go(id);if(id==='scr-idle')syncIdleTitleLayout();
-  if(id==='scr-scrolls')chooseScreen.enter();
+  if(id==='scr-scrolls')screenTransition.afterReveal(()=>{if(currentScreen==='scr-scrolls')chooseScreen.enter();});
   if(id==='scr-open')openBackdrop.enter();
   scheduleResultLoop();
   if(id==='scr-open')startScrollLoop();else{ScrollSound.stop();scrollMix(false);scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();document.getElementById('scroll-idle-video').pause();if(id!=='scr-result'){cancelAnimationFrame(whiteoutFrame);scrollWhiteout(0);}}
@@ -273,13 +273,16 @@ function startFigureGame(){
   const state=figureAvailable();if(!state.ok){toast(state.reason);return;}
   selectedScroll=null;
   if(cfg.hideScrollSelection===true){selectedScroll=Math.floor(Math.random()*12);openSelectedScroll();return;}
-  startBgm('select');renderScrollSelection();go('scr-scrolls');
+  startBgm('select');withTransition(()=>{renderScrollSelection();go('scr-scrolls');});
 }
 document.getElementById('scr-idle').addEventListener('click',e=>{
   if(e.target.closest('#admin-tap'))return;
   e.stopImmediatePropagation();startFigureGame();
 },true);
 // The grid is built once; re-rendering would restart the card entrance animation.
+const screenTransition=new ScreenTransition(document.getElementById('transition-canvas'),document.getElementById('transition-video'));
+// Screen-to-screen moves play the AE transition; the admin switch (현장 운영) turns it off on site.
+function withTransition(fn){if(cfg.screenTransitions!==false&&!document.hidden)screenTransition.run(fn);else fn();}
 const chooseScreen=new ChooseScreen(document.getElementById('choose-stage'));
 const openBackdrop=new OpenBackdrop(document.getElementById('open-stage'));
 const winScreen=new WinScreen(document.getElementById('win-stage'),()=>resetToIdle());
@@ -297,15 +300,20 @@ function renderScrollSelection(){
 }
 function chooseScroll(i){selectedScroll=selectedScroll===i?null:i;playSfx('pick');renderScrollSelection();manageIdle();}
 function randomScroll(){selectedScroll=Math.floor(Math.random()*12);playSfx('pick');renderScrollSelection();manageIdle();}
-function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else go('scr-scrolls');}}
+function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else withTransition(()=>{if(!drawing)go('scr-scrolls');});}}
 function openSelectedScroll(){
   if(selectedScroll==null){if(currentScreen==='scr-scrolls')chooseScreen.showHint('PLEASE SELECT<br>A SCROLL FIRST');return;}
+  // iOS audio unlock and BGM must run inside the tap; the rest waits for the transition cover.
+  summonUnlock();startBgm('play');
+  withTransition(openSelectedScrollNow);
+}
+function openSelectedScrollNow(){
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}
   drawing=false;setScrollProgress(0);document.getElementById('scr-open').classList.remove('opening');
   scrollPlaybackFailed=false;
   document.getElementById('open-back').disabled=false;
   document.getElementById('open-number').textContent=`${selectedScroll+1}번 소환서`;
-  summonUnlock();startBgm('play');go('scr-open');
+  go('scr-open');
 }
 function setScrollProgress(value){
   const box=document.getElementById('scroll-drag'),progress=Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
@@ -340,12 +348,12 @@ function commitFigureDraw(){
   localStorage.setItem(K_STATE,JSON.stringify({stock:hit.stock,log:nextLog}));
   stock=hit.stock;logArr=nextLog;
   curIp=hit.ip;
-  lastResult={ip:hit.ip,prize:hit.p,isLucky:false,serial,high:hit.kind==='figure',kind:hit.kind,wonName:actual.name,wonImageKey:actual.imageKey,media:actual.videoKey?actual:hit.p};
+  lastResult={ip:hit.ip,prize:hit.p,isLucky:false,serial,high:hit.kind!=='participation',top:hit.kind==='figure',kind:hit.kind,wonName:actual.name,wonImageKey:actual.imageKey,media:actual.videoKey?actual:hit.p};
 }
 function commitScrollDraw(){
   try{commitFigureDraw();}catch(error){setScrollProgress(0);startScrollLoop();toast('추첨을 진행하지 못했습니다: '+error.message);return false;}
   drawing=true;clearTimeout(idleTimer);document.getElementById('open-back').disabled=true;
-  if(lastResult&&lastResult.high)prepareWinMedia(lastResult,figureEpoch);
+  if(lastResult)prepareWinMedia(lastResult,figureEpoch);
   document.getElementById('scr-open').classList.add('opening');return true;
 }
 // Automatic open (button / keyboard): play the whole clip and finish on `ended`.
@@ -386,7 +394,7 @@ renderResult = function(){
   clearInterval(resultTick);resultTick=setInterval(updateResultCountdown,200);
   const key=reusableResultKey(lastResult);if(key)resultLoop.show(key);
   // Figure win: full-screen AE win video with a small staff check (serial and time).
-  const win=!!lastResult.high&&winScreen.hasVideo(winMedia(lastResult).win);document.getElementById('scr-result').classList.toggle('oap-win',win);
+  const win=winScreen.hasVideo(winMedia(lastResult).win);document.getElementById('scr-result').classList.toggle('oap-win',win);
   if(win){const t=new Date(),hms=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
    document.getElementById('win-staff').innerHTML=`<b>SHOW THIS SCREEN TO STAFF</b><span>No. ${lastResult.serial} · ${hms}</span>`;winScreen.play();}
 }
@@ -402,23 +410,15 @@ async function startResultMedia(){
   const url=key?null:await figureMediaUrl(p.videoKey,epoch);if(epoch!==figureEpoch||currentScreen!=='scr-result'||result!==lastResult)return;
   const el=document.getElementById('rc-img');
   if(url){el.innerHTML='';const v=document.createElement('video');v.src=url;v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;el.appendChild(v);v.play().catch(()=>{});}
-  el.onclick=p.popupVideoKey?()=>showFigurePopup(p.popupVideoKey):null;
-  el.style.cursor=p.popupVideoKey?'pointer':'';el.tabIndex=p.popupVideoKey?0:-1;
-  el.setAttribute('aria-label',p.popupVideoKey?'경품 영상 보기':result.wonName);
-  el.onkeydown=p.popupVideoKey?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showFigurePopup(p.popupVideoKey);}}:null;
-  document.getElementById('result-hint').textContent=p.popupVideoKey?'상품을 터치하면 영상을 볼 수 있습니다':'스태프에게 이 화면을 보여주세요';
-}
-async function showFigurePopup(key){
-  if(figurePopup)return;
-  const epoch=figureEpoch;const url=await figureMediaUrl(key);if(!url||epoch!==figureEpoch||currentScreen!=='scr-result')return;
-  figurePopup=document.createElement('div');figurePopup.className='figure-media-popup';figurePopup.setAttribute('role','dialog');figurePopup.setAttribute('aria-label','경품 영상');figurePopup.setAttribute('aria-modal','true');
-  const close=document.createElement('button');close.textContent='닫기';close.onclick=closeFigurePopup;
-  const video=document.createElement('video');video.src=url;video.controls=true;video.playsInline=true;video.muted=cfg.muted;video.onended=closeFigurePopup;
-  figurePopup.append(close,video);document.body.appendChild(figurePopup);clearTimeout(idleTimer);close.focus();
-  figurePopup.onkeydown=e=>{if(e.key==='Escape')closeFigurePopup();};video.play().catch(()=>{});
+  el.onclick=null;el.onkeydown=null;el.style.cursor='';el.tabIndex=-1;el.setAttribute('aria-label',result.wonName);
+  document.getElementById('result-hint').textContent='스태프에게 이 화면을 보여주세요';
 }
 function closeFigurePopup(){if(figurePopup){figurePopup.querySelector('video').pause();figurePopup.remove();figurePopup=null;}if(currentScreen==='scr-result'){manageIdle();document.getElementById('rc-img').focus();}}
 resetToIdle = function(){
+  if(drawing&&currentScreen==='scr-open')return;
+  if(['scr-scrolls','scr-open','scr-result'].includes(currentScreen))withTransition(resetToIdleNow);else resetToIdleNow();
+};
+function resetToIdleNow(){
   if(drawing&&currentScreen==='scr-open')return;
   figureEpoch++;clearTimeout(openingTimer);cancelAnimationFrame(openingFrame);clearInterval(resultTick);closeFigurePopup();hideSummon();
   resultLoop.hide();
@@ -431,15 +431,16 @@ renderAdmIps = function(){
   document.querySelectorAll('#pane-ips .adm-card').forEach((card,ii)=>{
     card.querySelectorAll('.prize-edit-row').forEach((row,pi)=>{
       const p=cfg.ips[ii].prizes[pi],kind=p.kind||(p.tier==='high'?'figure':'participation');
-      const select=row.querySelector('select');select.innerHTML=`<option value="participation" ${kind==='participation'?'selected':''}>참가상</option><option value="figure" ${kind==='figure'?'selected':''}>피규어</option>`;
-      select.onchange=()=>{p.kind=select.value;p.tier=p.kind==='figure'?'high':'normal';media.dataset.kind=p.kind;};
+      const select=row.querySelector('select');select.innerHTML=`<option value="figure" ${kind==='figure'?'selected':''}>상급</option><option value="normal" ${kind==='normal'?'selected':''}>일반</option><option value="participation" ${kind==='participation'?'selected':''}>참가상</option>`;
+      select.onchange=()=>{p.kind=select.value;p.tier=p.kind==='figure'?'high':'normal';};
       row.querySelector('.cool-in').disabled=true;row.querySelector('.cool-in').title='피규어 드로우에서는 쿨다운을 사용하지 않습니다';
-      const media=document.createElement('div');media.className='figure-admin-media';media.dataset.kind=kind;
+      const media=document.createElement('div');media.className='figure-admin-media';
       const btn=(field,label,clear)=>`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'${field}')">${p[field]?'✓ ':''}${label}</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'${field}')">${clear}</button>`;
-      media.innerHTML=`<span class="media-group media-figure">${btn('specialVideoKey','특별 영상','특별 영상 해제')}${btn('winVideoKey','당첨 영상','당첨 영상 해제')}</span><span class="media-group media-participation">`+`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'videoKey')">${p.videoKey?'✓ ':''}상품 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'videoKey')">상품 영상 해제</button><button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'popupVideoKey')">${p.popupVideoKey?'✓ ':''}클릭 팝업 영상</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'popupVideoKey')">팝업 해제</button></span>`;row.after(media);
+      // Every grade: 특별 영상 = optional cinematic first (e.g. 상급 figures), 상품 영상 = full-screen win screen.
+      media.innerHTML=btn('specialVideoKey','특별 영상','특별 영상 해제')+btn('winVideoKey','상품 영상','상품 영상 해제');row.after(media);
     });
   });
-  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='피규어(당첨) 상품: 특별 영상(선택)이 있으면 먼저 전체 화면으로 재생하고, 당첨 영상(선택)이 있으면 이어서 전체 화면 당첨 화면으로 보여줍니다. 당첨 영상이 없으면 당첨 카드 화면이 나옵니다. 두 영상은 iPad 재생 규격(1024×1366 권장, 1080×1920 이하 H.264)만 등록됩니다. 참가상: 상품 영상은 결과 카드 안 반복 영상, 클릭 팝업 영상은 카드 이미지를 누르면 열리는 영상입니다. 피규어 / 참가상을 지정하고 실제 수량을 입력하세요. 기본은 전체 IP의 노출 경품을 합친 잔여 재고 비례 추첨입니다. 설정 탭에서 별도 피규어 확률을 켤 수 있습니다. 시간 제한은 설정 탭에서 관리하며 상품별 쿨다운과 행운상은 적용하지 않습니다.';document.getElementById('pane-ips').prepend(note);
+  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='등급: 상급(확률·시간 제한 적용 대상) / 일반(재고 비례 당첨) / 참가상. 모든 상품은 이미지와 함께 두 영상을 등록할 수 있습니다. 특별 영상(선택)은 당첨 시 먼저 전체 화면으로 재생되는 시네마틱(상급 상품 연출용), 상품 영상(선택)은 이어서 나오는 전체 화면 당첨 화면입니다. 상품 영상이 없으면 당첨 카드가 나옵니다. 두 영상은 iPad 재생 규격(1024×1366 권장, 1080×1920 이하 H.264)만 등록됩니다. 상급 확률과 시간 제한은 설정 탭에서 관리하며 상품별 쿨다운과 행운상은 적용하지 않습니다.';document.getElementById('pane-ips').prepend(note);
 }
 function videoFrameSize(file){return new Promise(resolve=>{const v=document.createElement('video'),url=URL.createObjectURL(file);const done=r=>{URL.revokeObjectURL(url);resolve(r);};v.preload='metadata';v.muted=true;v.onloadedmetadata=()=>done([v.videoWidth,v.videoHeight]);v.onerror=()=>done(null);v.src=url;});}
 async function uploadFigureVideo(ii,pi,field){
@@ -460,28 +461,34 @@ function removeFigureVideo(ii,pi,field){const p=cfg.ips[ii].prizes[pi],old=p[fie
 renderAdmSettings = function(){
   figureBase.renderAdmSettings();
   const root=document.getElementById('pane-settings'),card=document.createElement('div');card.className='adm-card';
-  card.innerHTML=`<h4>피규어 드로우</h4><div class="adm-row"><label for="hide-scroll-selection">소환서 선택 화면 숨김</label><input id="hide-scroll-selection" type="checkbox" role="switch" ${cfg.hideScrollSelection===true?'checked':''} onchange="saveScrollSelectionVisibility()"></div><p class="figure-rule-note">켜면 메인에서 소환서를 자동 선택하여 개봉 화면으로 바로 이동합니다. 변경 즉시 저장됩니다.</p><div class="adm-row"><label for="figure-probability-enabled">피규어 당첨 확률 사용</label><input id="figure-probability-enabled" type="checkbox" role="switch" ${figureProbabilityEnabled()?'checked':''} onchange="updateFigureRuleInputs()" style="flex:none;width:24px;height:24px"></div><div class="adm-row"><label for="figure-percent">피규어 확률 (%)</label><input id="figure-percent" type="number" min="0" max="100" step="any" value="${figurePercent()}" ${figureProbabilityEnabled()?'':'disabled'}></div><p id="figure-mode-note" class="figure-rule-note" aria-live="polite"></p><p class="figure-rule-note">소환서 번호는 확률에 영향을 주지 않습니다. 결과 화면 복귀 시간은 기본 설정의 결과 복귀(초)를 따릅니다. 변경 후 저장 버튼을 눌러 적용하세요.</p><button class="adm-btn pri" onclick="saveFigureRules()">추첨 방식 저장</button>`;root.prepend(card);updateFigureRuleInputs();
+  card.innerHTML=`<h4>추첨 설정</h4><div class="adm-row"><label for="hide-scroll-selection">소환서 선택 화면 숨김</label><input id="hide-scroll-selection" type="checkbox" role="switch" ${cfg.hideScrollSelection===true?'checked':''} onchange="saveScrollSelectionVisibility()"></div><p class="figure-rule-note">켜면 메인에서 소환서를 자동 선택하여 개봉 화면으로 바로 이동합니다. 변경 즉시 저장됩니다.</p><div class="adm-row"><label for="figure-probability-enabled">상급 당첨 확률 사용</label><input id="figure-probability-enabled" type="checkbox" role="switch" ${figureProbabilityEnabled()?'checked':''} onchange="updateFigureRuleInputs()" style="flex:none;width:24px;height:24px"></div><div class="adm-row"><label for="figure-percent">상급 확률 (%)</label><input id="figure-percent" type="number" min="0" max="100" step="any" value="${figurePercent()}" ${figureProbabilityEnabled()?'':'disabled'}></div><p id="figure-mode-note" class="figure-rule-note" aria-live="polite"></p><p class="figure-rule-note">소환서 번호는 확률에 영향을 주지 않습니다. 결과 화면 복귀 시간은 기본 설정의 결과 복귀(초)를 따릅니다. 변경 후 저장 버튼을 눌러 적용하세요.</p><button class="adm-btn pri" onclick="saveFigureRules()">추첨 방식 저장</button>`;root.prepend(card);updateFigureRuleInputs();
   const visibility=document.createElement('div');visibility.className='adm-card selection-visibility-card';
   visibility.innerHTML='<h4>현장 운영 · 시퀀스 간소화</h4>';
   const visibilityRow=document.getElementById('hide-scroll-selection').closest('.adm-row');
   const visibilityNote=visibilityRow.nextElementSibling;visibility.append(visibilityRow,visibilityNote);root.prepend(visibility);
+  const transitionRow=document.createElement('div');transitionRow.innerHTML=`<div class="adm-row"><label for="screen-transitions">화면 전환 영상</label><input id="screen-transitions" type="checkbox" role="switch" ${cfg.screenTransitions!==false?'checked':''} onchange="saveScreenTransitions()"></div><p class="figure-rule-note">메인·소환서 선택·오픈·결과 화면 사이를 이동할 때 AE 전환 영상을 재생합니다. 현장에서 문제가 있으면 끄세요. 변경 즉시 저장됩니다.</p>`;visibility.append(...transitionRow.children);
   // The legacy kuji draw-screen return has no screen here; the field now sets the result screen return.
   const ret=document.getElementById('set-drawidle');ret.disabled=false;ret.min='3';ret.value=resultReturnSec();ret.title='결과 화면(당첨 영상·당첨 카드·참가상) 무입력 시 메인 복귀(초)';
   ret.closest('.adm-row').querySelector('label').textContent='결과 복귀(초)';
   const retNote=ret.closest('.adm-row').nextElementSibling;if(retNote&&retNote.classList.contains('muted-note'))retNote.innerHTML='결과 복귀 = 결과 화면(당첨 영상·당첨 카드·참가상)에서 무입력 N초 후 메인 복귀(최소 3초, 기본 7초). 당첨 영상은 등장 애니메이션이 끝난 뒤 화면을 누르면 바로 복귀합니다. 라인업(S3) 설정은 이 앱의 흐름에 쓰이지 않습니다.';
   root.querySelector('button[onclick="toggleLineup()"]').disabled=true;
   const timing=document.createElement('div');timing.className='adm-card';
-  timing.innerHTML=`<h4>피규어 당첨 시간 제한</h4><label><input id="figure-cool-on" type="checkbox" ${cfg.figureCooldownEnabled===true?'checked':''}> 당첨 후 쿨다운 사용</label><p>시간(분)은 기본 설정의 쿨다운(분)에서 지정합니다. 모든 피규어에 공통 적용합니다.</p><label><input id="figure-interval-on" type="checkbox" ${cfg.figureIntervalEnabled===true?'checked':''}> 구간당 1개 배정</label><div class="adm-row"><label>구간 길이(분)</label><input id="figure-interval-min" type="number" min="1" value="${Number(cfg.figureIntervalMin)||24}"></div><div class="adm-row"><label>운영 시작 시각</label><input id="figure-interval-start" type="datetime-local"></div><p>시작 시각부터 설정한 길이로 구간을 계속 나눕니다. 구간 수 제한 없이 남은 피규어 재고를 사용합니다. 각 구간의 무작위 시각 이후 첫 참여자에게 피규어를 지급합니다. 이 모드에서는 확률과 쿨다운 대신 구간 배정을 적용합니다. 참여자나 재고가 없으면 지급할 수 없으며 미지급분은 이월하지 않습니다. 당일 배포할 재고만 입력하세요. 재고 소진 후에는 참가상만 진행합니다. 둘째 날에는 시작 날짜/시각을 다시 설정하세요.</p><button class="adm-btn pri" onclick="saveFigureTiming()">시간 제한 저장</button>`;
+  timing.innerHTML=`<h4>상급 당첨 시간 제한</h4><label><input id="figure-cool-on" type="checkbox" ${cfg.figureCooldownEnabled===true?'checked':''}> 당첨 후 쿨다운 사용</label><p>시간(분)은 기본 설정의 쿨다운(분)에서 지정합니다. 모든 상급 상품에 공통 적용합니다.</p><label><input id="figure-interval-on" type="checkbox" ${cfg.figureIntervalEnabled===true?'checked':''}> 구간당 1개 배정</label><div class="adm-row"><label>구간 길이(분)</label><input id="figure-interval-min" type="number" min="1" value="${Number(cfg.figureIntervalMin)||24}"></div><div class="adm-row"><label>운영 시작 시각</label><input id="figure-interval-start" type="datetime-local"></div><p>시작 시각부터 설정한 길이로 구간을 계속 나눕니다. 구간 수 제한 없이 남은 피규어 재고를 사용합니다. 각 구간의 무작위 시각 이후 첫 참여자에게 피규어를 지급합니다. 이 모드에서는 확률과 쿨다운 대신 구간 배정을 적용합니다. 참여자나 재고가 없으면 지급할 수 없으며 미지급분은 이월하지 않습니다. 당일 배포할 재고만 입력하세요. 재고 소진 후에는 참가상만 진행합니다. 둘째 날에는 시작 날짜/시각을 다시 설정하세요.</p><button class="adm-btn pri" onclick="saveFigureTiming()">시간 제한 저장</button>`;
   root.prepend(timing);
   const date=new Date(cfg.figureIntervalStart||Date.now());if(Number.isFinite(date.getTime()))document.getElementById('figure-interval-start').value=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  document.getElementById('set-cool').closest('.adm-row').nextElementSibling.textContent='피규어 전체 당첨 후 재당첨 제한 시간입니다. 위 시간 제한 카드에서 ON/OFF를 설정하세요. 0분이면 제한하지 않습니다.';
+  document.getElementById('set-cool').closest('.adm-row').nextElementSibling.textContent='상급 전체 당첨 후 재당첨 제한 시간입니다. 위 시간 제한 카드에서 ON/OFF를 설정하세요. 0분이면 제한하지 않습니다.';
 
   // BGM playback mode lives inside the existing BGM card.
   const bgmHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('배경음악'));
   if(bgmHead){const box=document.createElement('div');box.className='figure-bgm-mode';
     box.innerHTML=`<div class="adm-row"><label for="bgm-mode">재생 방식</label><select id="bgm-mode" onchange="saveBgmMode()"><option value="screen" ${bgmSingle()?'':'selected'}>화면별 전환</option><option value="single" ${bgmSingle()?'selected':''}>한 곡 연속 루핑</option></select></div><div class="adm-row"><label for="bgm-single-slot">연속 재생 곡</label><select id="bgm-single-slot" onchange="saveBgmMode()" ${bgmSingle()?'':'disabled'}>${BGM_SLOTS.map(s=>`<option value="${s}" ${bgmSingleSlot()===s?'selected':''}>${{idle:'대기',select:'선택',play:'뽑기'}[s]} 슬롯</option>`).join('')}</select></div><p class="figure-rule-note">한 곡 연속 루핑이면 화면이 바뀌어도 선택한 슬롯의 곡이 끊기지 않고 이어집니다. 소환서 화면과 개봉 연출 중 BGM 볼륨 자동 감소(25%)와 음소거는 그대로 적용됩니다. 선택한 슬롯에 업로드된 곡이 없으면 무음입니다.</p>`;
     bgmHead.parentElement.appendChild(box);}
-  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 피규어 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
+  const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
+}
+function saveScreenTransitions(){
+  const old=cfg.screenTransitions;cfg.screenTransitions=document.getElementById('screen-transitions').checked;
+  if(!saveCfg()){cfg.screenTransitions=old;renderAdmSettings();toast('설정 저장 실패');return;}
+  toast(cfg.screenTransitions?'화면 전환 영상 켬':'화면 전환 영상 끔');
 }
 function saveScrollSelectionVisibility(){
   const old=cfg.hideScrollSelection;cfg.hideScrollSelection=document.getElementById('hide-scroll-selection').checked;
@@ -500,7 +507,7 @@ function saveBgmMode(){
 function updateFigureRuleInputs(){
   const enabled=document.getElementById('figure-probability-enabled').checked;
   document.getElementById('figure-percent').disabled=!enabled;
-  document.getElementById('figure-mode-note').textContent=enabled?'ON · 설정 확률로 피규어 당첨 여부를 결정한 뒤, 같은 종류 안에서 잔여 수량에 비례해 선택합니다. 피규어 소진 시 참가상만 지급하며, 참가상 소진 시 중지합니다(피규어 확률 100% 제외).':'OFF · 재고 비례 추첨: 남은 피규어와 참가상을 합쳐 수량에 비례해 선택합니다. 한 종류가 소진돼도 나머지 경품으로 계속 진행하며, 모든 노출 경품이 소진되면 종료합니다.';
+  document.getElementById('figure-mode-note').textContent=enabled?'ON · 설정 확률로 상급 당첨 여부를 결정합니다. 상급이 아니면 일반과 참가상을 합쳐 잔여 수량에 비례해 선택합니다. 상급 소진 시 일반·참가상만 지급하며, 일반·참가상 소진 시 중지합니다(상급 확률 100% 제외).':'OFF · 재고 비례 추첨: 남은 상급·일반·참가상을 합쳐 수량에 비례해 선택합니다. 한 종류가 소진돼도 나머지 경품으로 계속 진행하며, 모든 노출 경품이 소진되면 종료합니다.';
 }
 function saveFigureRules(){
   const enabled=document.getElementById('figure-probability-enabled').checked;

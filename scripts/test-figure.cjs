@@ -36,7 +36,7 @@ console.log('PASS: default stock weighting, single-category continuation and ful
 const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('app/index.html','utf8');
 const inline=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
-new vm.Script(inline);new vm.Script(fs.readFileSync('app/figure.js','utf8'));new vm.Script(fs.readFileSync('app/choose-screen.js','utf8'));new vm.Script(fs.readFileSync('app/idle-video.js','utf8'));
+new vm.Script(inline);new vm.Script(fs.readFileSync('app/figure.js','utf8'));new vm.Script(fs.readFileSync('app/choose-screen.js','utf8'));new vm.Script(fs.readFileSync('app/transition.js','utf8'));new vm.Script(fs.readFileSync('app/idle-video.js','utf8'));
 new vm.Script(fs.readFileSync('app/result-video.js','utf8'));
 // Execute the real draw commit in isolation: failed persistence must not consume inventory.
 const src=fs.readFileSync('app/figure.js','utf8');
@@ -65,3 +65,20 @@ const wins=[{kind:'figure',timestamp:new Date(start).toISOString()}];
 assert.equal(E.timeGate({...config,figureIntervalEnabled:false},wins,start+19*60000).blocked,true);
 assert.equal(E.timeGate({...config,figureIntervalEnabled:false},wins,start+20*60000).blocked,false);
 console.log('PASS: unlimited intervals, stable release times, one winner per interval and cooldown');
+
+// Three grades: 상급 (figure) alone is under probability; 일반 (normal) shares the stock pool with 참가상.
+{
+  const E=require('../app/draw-engine.js').FigureDrawEngine;
+  const ips=[{id:'a',prizes:[{kind:'figure'},{kind:'normal'},{kind:'participation'}]}];
+  const stock={a:[1,3,1]};
+  assert.equal(E.kindOf({tier:'high'}),'figure');assert.equal(E.kindOf({kind:'normal'}),'normal');
+  let seq=[0.99,0.5];const rng=()=>seq.shift();
+  let hit=E.draw(ips,stock,10,rng);assert.equal(hit.kind,'normal'); // 0.99 misses the 10% 상급 roll; 0.5*4 lands in 일반 (3 of 4)
+  seq=[0.05,0];hit=E.draw(ips,stock,10,rng);assert.equal(hit.kind,'figure');
+  assert.deepEqual(E.availability(ips,{a:[1,0,0]},50),{ok:false,reason:'일반·참가상 재고를 준비해주세요.'});
+  assert.equal(E.availability(ips,{a:[0,2,0]},50).ok,true,'일반 alone keeps the probability mode running');
+  const all={a:[0,0,0]};const counts={figure:0,normal:0,participation:0};let left={a:[2,3,5]};
+  while(E.availability(ips,left,null).ok){const h=E.draw(ips,left,null);counts[h.kind]++;left=h.stock;}
+  assert.deepEqual(counts,{figure:2,normal:3,participation:5});void all;
+  console.log('PASS: 상급 probability with 일반+참가상 stock pool, 일반-only availability, three-grade depletion');
+}

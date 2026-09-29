@@ -23,6 +23,8 @@ const server=http.createServer((req,res)=>{
  let page;
  try{
   page=await browser.newPage({viewport:{width:1024,height:1366},serviceWorkers:'block'});
+  // Immediate screen swaps: the transition has its own suite (test-transition-browser). In-memory only.
+  await page.addInitScript(()=>document.addEventListener('DOMContentLoaded',()=>{if(typeof cfg!=='undefined')cfg.screenTransitions=false;}));
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>typeof resultLoop!=='undefined'&&!!idb);
@@ -64,15 +66,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>lossReads),1,'one IDB read across all results');
   console.log('PASS: 10 results, one IDB read/node/source, no result-time load/seek/waiting, start frame, atomic draw, main warm returns; frame ms:',times);
   await ready();
-  await page.evaluate(()=>{cfg.ips[0].prizes[1].popupVideoKey='probe-popup';go('scr-open');commitFigureDraw();showResult();startResultMedia();});
-  await page.locator('#rc-img').click();
-  await page.waitForSelector('.figure-media-popup');
-  await page.waitForTimeout(5200);
-  assert.equal(await page.evaluate(()=>currentScreen), 'scr-result','popup must suspend auto-return');
-  await page.locator('.figure-media-popup button').click();
-  assert.ok(await page.evaluate(()=>resultDeadline-Date.now()>4500),'closing popup restarts the result return time');
-  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:7000});
-  console.log('PASS: original click target, popup pause/close/result-return automatic return');
+  // The click popup video was removed (2026-09-29); the result card image is no longer a tap target.
   await ready();
   await page.evaluate(()=>{resultLoop.suspend();idleDeck.suspend();});
   assert.equal(await page.evaluate(()=>resultLoop.video.paused&&idleDeck.videos.every(v=>v.paused)),true);

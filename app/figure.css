@@ -52,7 +52,7 @@
 .summon-flash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse,white,#efcaff 30%,transparent 72%);opacity:0;z-index:6}.opening .summon-flash{animation:summon-flash 2.8s ease-in forwards}
 .drag-guide{text-align:center;font-size:25.5px;font-weight:700;color:#ffe5a0;line-height:1.5;text-shadow:0 2px 10px #160a33}
 #scr-open .btn{width:100%}#scr-open .btn:disabled{opacity:.55}.figure-countdown{font-size:14px;color:#dbcaed;text-align:center;margin:8px 0}
-#rc-img video,#rc-img img{width:100%;height:100%;object-fit:contain}.figure-media-popup{position:fixed;inset:0;z-index:1000;background:#090316ed;display:flex;align-items:center;justify-content:center;padding:25px}.figure-media-popup video{max-width:100%;max-height:85vh}.figure-media-popup button{position:absolute;right:20px;top:20px;padding:12px 22px;border-radius:20px;background:#ffd463;color:#38210a;border:0;font:inherit}
+#rc-img video,#rc-img img{width:100%;height:100%;object-fit:contain}
 .figure-admin-media{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 14px}.figure-admin-media .adm-btn{font-size:12px}.figure-rule-note{font-size:14px;line-height:1.7;color:#e0ccec;margin:10px 0}
 #scr-result h2{font-size:clamp(27px,5vw,43px);line-height:1.3;text-align:center;flex-shrink:0}#scr-result{background:linear-gradient(#160a33bb,#160a33f5),url('assets/figure/arena.webp') center/cover;--cw:min(88vw,44dvh,calc((100dvh - 300px)*.75));overflow-y:auto;padding-bottom:20px;gap:clamp(8px,1.2vh,16px)}#result-card{flex-shrink:0;margin-top:2.5vh}#scr-result .btn-yellow{flex-shrink:0;margin-top:8px}.figure-countdown{flex-shrink:0}
 @keyframes drag-chevron-flow{0%,10%,76%,100%{opacity:.17;transform:rotate(-45deg) scale(.94);filter:drop-shadow(0 0 3px #ffd46355)}20%,64%{opacity:.9;transform:rotate(-45deg) scale(1.08);filter:drop-shadow(0 0 9px #ffe89f) drop-shadow(0 0 16px #ffb62da0)}}
@@ -104,9 +104,9 @@
 #scr-idle .copyright{left:20px}#scr-idle .idle-credit{right:20px}#scr-idle #idle-version{left:50%;transform:translateX(-50%)}
 .selection-visibility-card .adm-row{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:56px}
 .selection-visibility-card .adm-row label{width:auto;flex:1;font-size:18px;color:white}
-#hide-scroll-selection{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:64px;height:36px;border-radius:24px;background:#655681;border:2px solid #c9b0e8;cursor:pointer}
-#hide-scroll-selection:before{content:'';position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:white}
-#hide-scroll-selection:checked{background:#ffc928;border-color:#ffeaa0}#hide-scroll-selection:checked:before{left:32px;background:#38210a}
+#hide-scroll-selection,#screen-transitions{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:64px;height:36px;border-radius:24px;background:#655681;border:2px solid #c9b0e8;cursor:pointer}
+#hide-scroll-selection:before,#screen-transitions:before{content:'';position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:white}
+#hide-scroll-selection:checked,#screen-transitions:checked{background:#ffc928;border-color:#ffeaa0}#hide-scroll-selection:checked:before,#screen-transitions:checked:before{left:32px;background:#38210a}
 @media(max-aspect-ratio:3/4){#scr-idle .idle-brand{top:calc((100dvh - 56.25vw)/4)}}
 @media(min-aspect-ratio:1/1){#scr-idle .idle-brand{top:18%;gap:6px}#scr-idle .idle-headline .ld-2{font-size:min(8vw,8vh)}#scr-idle .idle-wordmark{width:min(25vw,220px)}#scr-idle #idle-banner{top:82%;font-size:30px;padding:18px 50px}}
 
@@ -197,14 +197,17 @@
 #scr-open{animation:none;align-items:center;justify-content:center;background:linear-gradient(#fff799,#ffc309)}
 .open-stage{position:relative;width:min(100%,calc(100dvh*2048/2732));aspect-ratio:2048/2732;container-type:size;overflow:hidden;background:#ffd23a}
 .open-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}
-#scr-open .scroll-drag{position:absolute;left:calc(100%*140/2048);top:calc(100%*595/2732);width:calc(100%*1768/2048);height:calc(100%*1768/2732);aspect-ratio:auto;flex:none;padding:0;border:0;border-radius:0;background:#000;box-shadow:none;z-index:2}
+#scr-open .scroll-drag{position:absolute;left:calc(100%*140/2048);top:calc(100%*531/2732);width:calc(100%*1768/2048);height:calc(100%*1768/2732);aspect-ratio:auto;flex:none;padding:0;border:0;border-radius:0;background:#000;box-shadow:none;z-index:2}
 #scr-open .scroll-loop-video,#scr-open .scroll-fallback{inset:0;width:100%;height:100%;border-radius:0;object-fit:cover}
 /* Drag guide in the AE-reserved area (284,2175 1480x150), expressed within the slot. */
-#scr-open #scroll-drag .drag-hint{left:calc(100%*144/1768);top:calc(100%*1580/1768);bottom:auto;width:calc(100%*1480/1768);height:calc(100%*150/1768);padding:0;border-radius:999px;background:none;opacity:.92}
-#scr-open .drag-track{--handle-width:19%;width:100%;height:100%;border:2px solid #ffd463;border-radius:999px;background:linear-gradient(90deg,#3a1d00e6,#5b2f14d9);box-shadow:inset 0 1px 2px #ffffff26,0 .6cqw 1.8cqw #0006}
-#scr-open .drag-handle{top:4px;height:calc(100% - 8px);border:2px solid #fff6cc;background:linear-gradient(180deg,#fff3b8 0%,#ffd24d 50%,#f2a800 100%);box-shadow:inset 0 2px 3px #ffffff80,0 3px 10px #0007,0 0 12px #ffd46366}
-#scr-open .drag-grip-dots i{background:#6b3a07;box-shadow:none}
-#scr-open .drag-handle-arrows i{background:linear-gradient(135deg,#8a4a0c,#5b2f14)}
+#scr-open #scroll-drag .drag-hint{left:calc(100%*144/1768);top:calc(100%*1580/1768);bottom:auto;width:calc(100%*1480/1768);height:calc(100%*150/1768);padding:0;border-radius:999px;background:none;opacity:.75}
+/* Glassmorphism (Apple-style frosted glass) over the scroll clip, whole guide at 75% opacity. */
+#scr-open .drag-track{--handle-width:19%;width:100%;height:100%;border:1px solid #ffffffa6;border-radius:999px;background:linear-gradient(180deg,#ffffff4d 0%,#ffffff1f 55%,#ffffff14 100%);-webkit-backdrop-filter:blur(14px) saturate(170%);backdrop-filter:blur(14px) saturate(170%);box-shadow:inset 0 1px 0 #ffffffb3,inset 0 -1px 0 #ffffff26,0 .8cqw 2.4cqw #1a083366}
+#scr-open .drag-handle{top:4px;height:calc(100% - 8px);border:1px solid #ffffffd9;background:linear-gradient(180deg,#ffffffc7 0%,#ffffff8c 55%,#ffffff66 100%);-webkit-backdrop-filter:blur(10px) saturate(180%);backdrop-filter:blur(10px) saturate(180%);box-shadow:inset 0 1px 0 #fff,0 .4cqw 1.4cqw #1a083359}
+#scr-open .drag-grip-dots i{background:#3b2a57b3;box-shadow:none}
+#scr-open .drag-handle-arrows i{background:linear-gradient(135deg,#3b2a57,#6a4a9a)}
+#scr-open .drag-rail{background:linear-gradient(90deg,#ffffff33,#ffffff99);box-shadow:none}
+#scr-open .drag-chevron{border-color:#fff} /* keep the base glow filter: a different static filter adds a transition on every scrub */
 /* On the open frame's white corner the translucent pill turns grey; use the SLIDE bar brown. */
 .open-back{background:#5b2f14eb;border-color:#ffd46399;-webkit-backdrop-filter:none;backdrop-filter:none}
 /* OAP v5 WIN PRIZE — full-screen AE pre-render over the result card for figure wins. */
@@ -218,11 +221,12 @@
 .win-staff span{font-weight:500;font-size:1.25em}
 @keyframes win-staff-in{from{opacity:0;transform:translateY(1cqh)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.win-staff{animation-duration:.01s}}
-/* Admin: winning prizes show 특별/당첨 영상, participation shows 상품/클릭 팝업 영상. */
-.figure-admin-media .media-group{display:contents}
-.figure-admin-media[data-kind=figure] .media-participation,.figure-admin-media[data-kind=participation] .media-figure{display:none}
 /* Automatic open, layout C: a compact pill centred in the empty band under the SLIDE bar (2483-2732). */
-.open-auto{position:absolute;z-index:3;left:50%;top:calc(100%*2536/2732);height:calc(100%*140/2732);translate:-50% 0;padding:0 4.2cqw;display:flex;align-items:center;gap:1.4cqw;border-radius:999px;border:2px solid #5b2f14;background:linear-gradient(180deg,#fff3b8,#ffd24d 55%,#f2a800);box-shadow:0 .5cqw 0 #8a4a0c,0 1cqw 2cqw #0003;color:#5b2f14;font:800 2.1cqw/1 'Unbounded',sans-serif;letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .09s ease-out,box-shadow .09s ease-out}
+.open-auto{position:absolute;z-index:3;left:50%;top:calc(100%*2472/2732);height:calc(100%*140/2732);translate:-50% 0;padding:0 4.2cqw;display:flex;align-items:center;gap:1.4cqw;border-radius:999px;border:2px solid #5b2f14;background:linear-gradient(180deg,#fff3b8,#ffd24d 55%,#f2a800);box-shadow:0 .5cqw 0 #8a4a0c,0 1cqw 2cqw #0003;color:#5b2f14;font:800 2.1cqw/1 'Unbounded',sans-serif;letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .09s ease-out,box-shadow .09s ease-out}
 .open-auto i{font-style:normal;font-size:1.1em}
 .open-auto:active{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8a4a0c,0 .6cqw 1.4cqw #0003}
 #scr-open.opening .open-auto{opacity:.45;pointer-events:none}
+/* Screen transition overlay (WebGL, stacked alpha video); blocks input while it plays. */
+.screen-transition{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:4000;display:none;pointer-events:none}
+.screen-transition.is-active{display:block;pointer-events:auto}
+.transition-source{position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1}

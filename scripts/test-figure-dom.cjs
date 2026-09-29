@@ -12,6 +12,7 @@ for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))evaluate(m[1]);
 evaluate(fs.readFileSync('app/draw-engine.js','utf8'));
 evaluate(fs.readFileSync('app/scroll-audio.js','utf8'));
 evaluate(fs.readFileSync('app/result-video.js','utf8'));
+evaluate(fs.readFileSync('app/transition.js','utf8'));
 evaluate(fs.readFileSync('app/choose-screen.js','utf8'));
 evaluate(fs.readFileSync('app/figure.js','utf8'));
 evaluate("stock={ip1:[0,10]};cfg.figureWinPercent=10;cfg.muted=true;"); // participation only: these journeys must reach the result directly (figure wins are covered below)
@@ -143,13 +144,15 @@ assert.ok(result.classList.contains('active'));assert.equal(result.classList.con
 assert.equal(w.document.querySelector('#scr-result h2').textContent,'경품 당첨!');
 assert.ok(Math.abs(evaluate('resultDeadline-Date.now()')-7000)<300,'결과 복귀 defaults to 7 s');
 w.resetToIdle();
-// Admin: winning rows offer 특별/당첨 영상, participation rows 상품/클릭 팝업 영상; the kind switch swaps them.
+// Admin: three grades (상급/일반/참가상) and 특별 영상 + 상품 영상 on every row; no click popup video.
 w.renderAdmIps();
-const rows=[...w.document.querySelectorAll('#pane-ips .figure-admin-media')];
-assert.deepEqual(rows.map(m=>m.dataset.kind),['figure','participation']);
-assert.match(rows[0].querySelector('.media-figure').textContent,/특별 영상.*당첨 영상/);assert.match(rows[0].querySelector('.media-participation').textContent,/상품 영상.*클릭 팝업 영상/);
-const kindSelect=w.document.querySelectorAll('#pane-ips .prize-edit-row select')[1];kindSelect.value='figure';kindSelect.dispatchEvent(new w.Event('change'));assert.equal(rows[1].dataset.kind,'figure');
-kindSelect.value='participation';kindSelect.dispatchEvent(new w.Event('change'));
+const kindSelects=[...w.document.querySelectorAll('#pane-ips .prize-edit-row select')];
+assert.deepEqual([...kindSelects[0].options].map(o=>[o.value,o.textContent]),[['figure','상급'],['normal','일반'],['participation','참가상']]);
+const mediaRows=[...w.document.querySelectorAll('#pane-ips .figure-admin-media')];
+for(const m of mediaRows){assert.match(m.textContent,/특별 영상.*상품 영상/);assert.doesNotMatch(m.textContent,/팝업/);}
+kindSelects[1].value='normal';kindSelects[1].dispatchEvent(new w.Event('change'));assert.equal(evaluate('cfg.ips[0].prizes[1].kind'),'normal');
+kindSelects[1].value='participation';kindSelects[1].dispatchEvent(new w.Event('change'));
+assert.equal(typeof w.showFigurePopup,'undefined');
 // Settings: the legacy draw-return field is now 결과 복귀(초), editable and saved (min 3).
 w.renderAdmSettings();
 const ret=w.document.getElementById('set-drawidle');
@@ -162,7 +165,7 @@ gesture('pointerdown',20);gesture('pointermove',280);gesture('pointerup',280);
 assert.ok(result.classList.contains('active'));assert.equal(result.classList.contains('oap-win'),false);assert.equal(summonPlays,0);
 assert.ok(Math.abs(evaluate('resultDeadline-Date.now()')-9000)<300,'participation follows 결과 복귀 too');
 evaluate('cfg.resultReturnSec=7');
-console.log('PASS: winning prize without media shows the gold card (no cinematic/v5); admin 특별/당첨 vs 상품/팝업 slots by kind; 결과 복귀(초) editable, saved (min 3) and applied to both results');
+console.log('PASS: winning prize without media shows the gold card (no cinematic/v5); admin 상급/일반/참가상 with 특별/상품 영상 on every row (no popup); 결과 복귀(초) editable, saved (min 3) and applied to both results');
 // Single-track BGM: the chosen slot keeps looping across screen changes without restarts or volume resets; per-screen mode switches slots.
 const bgm=evaluate('bgmEl'),bgmCalls={};
 for(const k of ['idle','select','play']){bgmCalls[k]={play:0,pause:0};bgm[k].play=async()=>{bgmCalls[k].play++;Object.defineProperty(bgm[k],'paused',{value:false,configurable:true});};bgm[k].pause=()=>{bgmCalls[k].pause++;Object.defineProperty(bgm[k],'paused',{value:true,configurable:true});};}
@@ -178,7 +181,7 @@ assert.equal(w.document.getElementById('bgm-single-slot').disabled,false);evalua
 console.log('PASS: single-track BGM keeps one slot looping across screens, leaves ducked volume alone, and the admin controls persist the mode');
 w.resetToIdle();assert.ok(w.document.getElementById('scr-idle').classList.contains('active'));
 w.renderAdmIps();assert.equal(w.document.querySelectorAll('.figure-admin-media').length,2);
-assert.match(w.document.getElementById('pane-ips').textContent,/피규어/);
+assert.match(w.document.getElementById('pane-ips').textContent,/상급/);
 w.renderAdmSettings();assert.ok(w.document.getElementById('figure-percent'));
 assert.equal(w.document.getElementById('figure-probability-enabled').checked,false);
 assert.equal(w.document.getElementById('figure-percent').disabled,true);

@@ -26,6 +26,8 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1024,height:1366},serviceWorkers:'block'});
+  // Immediate screen swaps: the transition has its own suite (test-transition-browser). In-memory only.
+  await page.addInitScript(()=>document.addEventListener('DOMContentLoaded',()=>{if(typeof cfg!=='undefined')cfg.screenTransitions=false;}));
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const base=`http://127.0.0.1:${server.address().port}/`;
   await page.goto(base,{waitUntil:'load'});

@@ -18,6 +18,8 @@ const server=http.createServer((req,res)=>{
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1024,height:1366},serviceWorkers:'block'});
+  // Immediate screen swaps: the transition has its own suite (test-transition-browser). In-memory only.
+  await page.addInitScript(()=>document.addEventListener('DOMContentLoaded',()=>{if(typeof cfg!=='undefined')cfg.screenTransitions=false;}));
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   let release;const mediaGate=new Promise(resolve=>{release=resolve;});
   await page.route('**/sacred-open.mp4',async route=>{await mediaGate;await route.continue();});
@@ -45,7 +47,7 @@ const server=http.createServer((req,res)=>{
     const states=[0,.6,.2,0].map(progress=>{setScrollProgress(progress);return {active:chevrons.filter(node=>node.classList.contains('is-active')).length,left:handle.getBoundingClientRect().left};});
     const visible=getComputedStyle(hint).opacity,cueStroke=parseFloat(getComputedStyle(chevrons[0]).borderRightWidth);box.classList.remove('scrubbing');const cueAnimations=chevrons.map(node=>node.getAnimations().length);return {count:chevrons.length,states,visible,cueStroke,cueAnimations};
   });
-  assert.equal(arrow.count,10);assert.deepEqual(arrow.states.map(state=>state.active),[0,6,2,0]);assert.ok(arrow.states[1].left>arrow.states[2].left&&arrow.states[2].left>arrow.states[0].left);assert.equal(arrow.states[0].left,arrow.states[3].left);assert.equal(arrow.visible,'0.92'); // v3 open frame: the SLIDE text is baked into the AE video
+  assert.equal(arrow.count,10);assert.deepEqual(arrow.states.map(state=>state.active),[0,6,2,0]);assert.ok(arrow.states[1].left>arrow.states[2].left&&arrow.states[2].left>arrow.states[0].left);assert.equal(arrow.states[0].left,arrow.states[3].left);assert.equal(arrow.visible,'0.75'); // v3 open frame: the SLIDE text is baked into the AE video
 assert.equal(arrow.cueStroke,12);assert.deepEqual(arrow.cueAnimations,new Array(10).fill(1));
   await page.locator('#scroll-open-btn').click(); // layout C AUTO OPEN pill
   const cold=await page.evaluate(()=>({ready:scrollVideo().readyState,visible:getComputedStyle(document.getElementById('scroll-idle-video')).visibility,log:logArr.length}));

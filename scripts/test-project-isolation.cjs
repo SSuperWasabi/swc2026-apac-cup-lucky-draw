@@ -17,7 +17,7 @@ w.HTMLMediaElement.prototype.play=async()=>{};
 w.HTMLElement.prototype.setPointerCapture=()=>{};
 run(fs.readFileSync('app/idle-video.js','utf8'));
 for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))run(m[1]);
-for(const file of ['draw-engine.js','scroll-audio.js','result-video.js','choose-screen.js','figure.js'])run(fs.readFileSync('app/'+file,'utf8'));
+for(const file of ['draw-engine.js','scroll-audio.js','result-video.js','transition.js','choose-screen.js','figure.js'])run(fs.readFileSync('app/'+file,'utf8'));
 
 (async()=>{
  try{
