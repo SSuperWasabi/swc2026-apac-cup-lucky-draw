@@ -41,21 +41,29 @@ const ff=path.resolve('.tools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe
   await page.waitForFunction(()=>!screenTransition.busy,null,{timeout:6000});
   const tl=await page.evaluate(()=>window.__tl);
   const swap=tl.find(e=>e[0]==='screen'&&e[1]==='scr-scrolls'),entrance=tl.find(e=>e[0]==='entrance');
-  assert.ok(swap&&swap[3]>=13/30-0.001&&swap[3]<0.8,`screen swaps while covered (transition t=${swap&&swap[3]})`);
+  assert.ok(swap&&swap[3]>=11/30&&swap[3]<0.8,`screen swaps while covered (transition t=${swap&&swap[3]})`);
   assert.ok(entrance&&entrance[3]>=48/30-0.05,`choose entrance starts as the cover lifts (transition t=${entrance&&entrance[3]})`);
   assert.equal(await page.evaluate(()=>getComputedStyle(document.getElementById('transition-canvas')).display),'none');
+  assert.ok(entrance[2]<48/30/1.8*1000+400,`entrance at ${entrance[2].toFixed(0)} ms wall time (1.8x)`);
   console.log('PASS: idle -> choose: swap at t=%s s (covered), entrance at t=%s s (lifting), overlay removed; input blocked meanwhile',swap[3].toFixed(3),entrance[3].toFixed(3));
 
-  // 2) WebGL output matches the source frame (orientation, colour, premultiplied alpha) at a covered frame.
+  // 2) Choose -> open cuts straight in (no transition).
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
   await page.locator('#scroll-grid .scroll-choice').first().click();
-  await page.evaluate(()=>new Promise(resolve=>{
+  await page.locator('#scroll-next').click();
+  assert.deepEqual(await page.evaluate(()=>({busy:screenTransition.busy,screen:currentScreen})),{busy:false,screen:'scr-open'},'choose -> open has no transition');
+  console.log('PASS: choose -> open navigates at once without the transition');
+
+  // 3) BACK plays it at 1.8x; the WebGL output matches the source frame (orientation, colour, premultiplied alpha).
+  const stockBefore=await page.evaluate(()=>JSON.stringify(stock));
+  const rate=await page.evaluate(()=>new Promise(resolve=>{
    const v=document.getElementById('transition-video'),orig=v.play.bind(v);
    // Freeze the transition on frame 30 (fully covered) for a screenshot, then let it finish.
-   window.__freeze=()=>{v.pause();v.currentTime=30/30;v.addEventListener('seeked',()=>{screenTransition.draw();requestAnimationFrame(()=>requestAnimationFrame(resolve));},{once:true});};
+   window.__freeze=()=>{const r=v.playbackRate;v.pause();v.currentTime=30/30;v.addEventListener('seeked',()=>{screenTransition.draw();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(r)));},{once:true});};
    v.play=()=>orig().then(()=>{v.requestVideoFrameCallback(()=>window.__freeze());});
-   document.getElementById('scroll-next').click();
+   document.getElementById('open-back').click();
   }));
+  assert.equal(rate,1.8,'transition plays at 1.8x');
   const shot=path.resolve('.tools/transition-frame30.png');await page.screenshot({path:shot});
   const ref=path.resolve('.tools/transition-frame30-ref.png');
   spawnSync(ff,['-hide_banner','-loglevel','error','-y','-i','app/assets/oap/transition/transition-stacked.mp4','-vf','select=eq(n\\,30),crop=768:1024:0:0,scale=1024:1366:flags=bicubic','-frames:v','1',ref]);
@@ -63,20 +71,16 @@ const ff=path.resolve('.tools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe
   const psnr=Number((/average:([0-9.]+)/.exec(run.stderr)||[0,0])[1]);
   assert.ok(psnr>28,`WebGL frame 30 vs source colour half PSNR ${psnr}`);
   await page.evaluate(()=>{const v=document.getElementById('transition-video');delete v.play;v.play();});
-  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-open',null,{timeout:8000});
-  console.log('PASS: choose -> open; WebGL-composited frame 30 matches the source frame (PSNR %s dB)',psnr.toFixed(2));
-
-  // 3) BACK and HOME also transition; the draw state is untouched.
-  const stockBefore=await page.evaluate(()=>JSON.stringify(stock));
-  await page.locator('#open-back').click();
-  assert.equal(await page.evaluate(()=>screenTransition.busy),true);
   await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-scrolls',null,{timeout:6000});
+  console.log('PASS: BACK (open -> choose) plays the transition at 1.8x; WebGL-composited frame 30 matches the source frame (PSNR %s dB)',psnr.toFixed(2));
+
+  // HOME (choose -> idle) also transitions; the draw state is untouched.
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
   await page.locator('#scr-scrolls .choose-back').click();
   assert.equal(await page.evaluate(()=>screenTransition.busy),true);
   await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-idle',null,{timeout:6000});
   assert.equal(await page.evaluate(()=>JSON.stringify(stock)),stockBefore);
-  console.log('PASS: BACK (open -> choose) and HOME (choose -> idle) play the transition; no draw');
+  console.log('PASS: HOME (choose -> idle) plays the transition; no draw');
 
   // 4) Admin switch off: immediate navigation. A broken video still completes the move (watchdog).
   await page.evaluate(()=>{cfg.screenTransitions=false;});

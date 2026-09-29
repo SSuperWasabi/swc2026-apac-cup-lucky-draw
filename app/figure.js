@@ -303,9 +303,10 @@ function randomScroll(){selectedScroll=Math.floor(Math.random()*12);playSfx('pic
 function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else withTransition(()=>{if(!drawing)go('scr-scrolls');});}}
 function openSelectedScroll(){
   if(selectedScroll==null){if(currentScreen==='scr-scrolls')chooseScreen.showHint('PLEASE SELECT<br>A SCROLL FIRST');return;}
-  // iOS audio unlock and BGM must run inside the tap; the rest waits for the transition cover.
+  // iOS audio unlock and BGM must run inside the tap. Choose -> open cuts straight in (user decision);
+  // only the direct idle -> open path (selection hidden) keeps the transition.
   summonUnlock();startBgm('play');
-  withTransition(openSelectedScrollNow);
+  if(currentScreen==='scr-scrolls')openSelectedScrollNow();else withTransition(openSelectedScrollNow);
 }
 function openSelectedScrollNow(){
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}

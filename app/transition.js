@@ -10,6 +10,8 @@ class ScreenTransition {
     // Frames 11-48 of 61 cover the screen completely (alpha >= 254).
     this.coverAt = 13 / 30;
     this.revealAt = 48 / 30;
+    // Played 1.8x faster than authored (user decision); cover/reveal points are in media time.
+    this.rate = 1.8;
     this.busy = false;
     this.gl = null;
     this.revealed = [];
@@ -93,6 +95,7 @@ class ScreenTransition {
     this.resize();
     this.canvas.classList.add('is-active');
     try { v.currentTime = 0; } catch (e) { /* not seekable yet */ }
+    v.playbackRate = this.rate;
     Promise.resolve().then(() => v.play()).then(() => this.frame(tick), finish);
   }
 

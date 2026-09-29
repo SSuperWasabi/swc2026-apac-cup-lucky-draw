@@ -14,8 +14,9 @@
 ffmpeg -framerate 30 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:v]format=rgba,tpad=stop=2:stop_mode=add:color=0x00000000,scale=-2:1024:flags=lanczos,crop=768:1024,format=rgba,split[c][a];[c]premultiply=inplace=1,format=gbrp[cc];[a]format=rgba,alphaextract,format=gbrp[aa];[cc][aa]vstack,format=yuv420p[v]" -map "[v]" -c:v libx264 -profile:v high -level:v 4.1 -preset slow -crf 14 -g 15 -keyint_min 15 -sc_threshold 0 -r 30 -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv -an -movflags +faststart transition-stacked.mp4
 ```
 
-## 앱 동작 (`app/transition.js`, swc-apac-v10)
+## 앱 동작 (`app/transition.js`, swc-apac-v11)
 
+- 재생 속도는 원본의 1.8배다(v11, 사용자 결정). 전체 약 1.1초가 걸린다. 아래 시점은 영상 시간 기준이라 속도와 무관하다.
 - 프레임 11~48에서 화면을 완전히 덮는다(알파 254 이상).
 - 영상 시간 13/30초에 화면을 바꾼다(덮인 상태). 48/30초에 다음 화면의 등장 애니메이션을 시작한다(걷히는 중). 선택 화면 등장은 `afterReveal`로 이때까지 미룬다.
 - 전환 중에는 캔버스(z-index 4000)가 입력을 막는다.
@@ -28,7 +29,7 @@ ffmpeg -framerate 30 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:
 | 이동 | 전환 |
 | --- | --- |
 | 대기 → 선택 (배너 탭) | 적용 |
-| 선택 → 오픈 (NEXT) | 적용 |
+| 선택 → 오픈 (NEXT) | 적용 안 함(v11, 사용자 결정). 바로 오픈 화면으로 간다. 선택 화면을 숨긴 설정의 대기 → 오픈은 전환 유지 |
 | 오픈 → 선택 (BACK) | 적용. 추첨 확정 후 오픈 중에는 이동하지 않는다 |
 | 선택 → 대기 (HOME) | 적용 |
 | 결과(당첨 영상·카드·참가상) → 대기 (탭·자동 복귀) | 적용 |
@@ -40,11 +41,12 @@ ffmpeg -framerate 30 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:
 ## 검증 (Chrome, `scripts/test-transition-browser.cjs`)
 
 - 대기 → 선택:
-  - 화면이 덮인 뒤(t ≥ 0.433초) 바뀐다.
+  - 화면이 덮인 뒤(영상 t ≥ 11/30초, 완전히 덮이는 첫 프레임) 바뀐다.
   - 등장 애니메이션은 t ≥ 1.6초에 시작한다.
   - 전환 중에는 입력이 막히고, 끝나면 캔버스가 사라진다.
 - WebGL 합성 프레임 30과 소스 색 절반의 PSNR이 28dB를 넘는다(측정값 약 40dB).
-- BACK·HOME에서 전환이 재생되고, 재고와 로그는 그대로다.
+- 선택 → 오픈은 전환 없이 즉시 이동한다.
+- BACK은 1.8배속으로 전환이 재생된다. HOME에서도 전환이 재생되고, 재고와 로그는 그대로다.
 - 스위치를 끄면 즉시 이동한다. 재생이 거부돼도 이동은 완료된다.
 
 다른 브라우저 테스트들은 전환을 끄고 실행한다(메모리의 `cfg.screenTransitions=false`만 바꾸고 저장소는 그대로 둔다).

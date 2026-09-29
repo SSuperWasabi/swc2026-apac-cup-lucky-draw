@@ -21,7 +21,7 @@
 | devilmon-rug | DEVILMON RUG | 일반 |
 | random-3d-keychain | RANDOM 3D KEYCHAIN | 일반 |
 
-제라투 특별 영상(시네마틱): `resource/oap/upload-ready/special-videos/special-video_zeratu-figure.mp4`(1080×1216, 7초, 소리 포함).
+제라투 특별 영상(시네마틱): `resource/oap/upload-ready/special-videos/special-video_zeratu-figure.mp4`. v11에서 와이드 원본 `special-video_zeratu-figure_wide.mp4`(1918×1080, HEVC 10bit, 24fps)를 가운데 3:4(810×1080)로 잘라 1024×1366 H.264 High 4.1(CRF 17, AAC 48kHz)로 만들었다. 7.07초, 9.5MB, iPad Pro 12.9 화면을 여백 없이 채운다. 날개를 가장 넓게 펴는 5~6초에는 날개 끝이 화면 밖으로 나간다. 이전 1080×1216 버전은 `ae-work/render/special-v1/`에 보관했다.
 
 ## 앱 동작 (swc-apac-v10)
 
