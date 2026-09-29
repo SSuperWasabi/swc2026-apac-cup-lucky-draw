@@ -232,3 +232,5 @@
 .screen-transition{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:4000;display:none;pointer-events:none}
 .screen-transition.is-active{display:block;pointer-events:auto}
 .transition-source{position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1}
+/* BGM playlist rows: the first ▲ and last ▼ cannot move. */
+.figure-bgm-mode .adm-btn:disabled{opacity:.35;cursor:default}

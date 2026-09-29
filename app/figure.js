@@ -38,9 +38,39 @@ let scrollScrubbing=false,scrollSeekTarget=null;
 // Keep the same media element/time in continuous mode; GainNode controls ducking on iPad.
 const BGM_SLOTS=['idle','select','play'];
 const bgmSingle=()=>cfg.bgmMode==='single';
+const bgmPlaylistMode=()=>cfg.bgmMode==='playlist';
 const bgmSingleSlot=()=>BGM_SLOTS.includes(cfg.bgmSingleSlot)?cfg.bgmSingleSlot:'idle';
+// 여러 곡 연속 재생: admin-ordered tracks (IndexedDB bgm_list_<id>) play one after another on one element,
+// the list wraps, and screen changes never restart it. One element keeps the iOS unlock and the ducking gain.
+bgmEl.list=new Audio();bgmEl.list.loop=false;
+const bgmList={urls:new Map(),index:0};
+const bgmTracks=()=>Array.isArray(cfg.bgmPlaylist)?cfg.bgmPlaylist:[];
+function bgmListCue(index){
+  const tracks=bgmTracks().filter(t=>bgmList.urls.has(t.id)),a=bgmEl.list;
+  if(!tracks.length){bgmList.index=0;a.pause();a.removeAttribute('src');return false;}
+  bgmList.index=((index%tracks.length)+tracks.length)%tracks.length;
+  bgmList.current=tracks[bgmList.index].id;a.src=bgmList.urls.get(bgmList.current);return true;
+}
+bgmEl.list.addEventListener('ended',()=>{
+  if(!bgmListCue(bgmList.index+1))return;
+  if(curBgm==='list'&&!cfg.muted){syncBgmGain(bgmEl.list);bgmEl.list.play().catch(error=>console.warn('BGM playback failed',error));}
+});
+async function loadBgmPlaylist(){
+  const ids=new Set(bgmTracks().map(t=>t.id));
+  for(const [id,url] of bgmList.urls)if(!ids.has(id)){bgmList.urls.delete(id);try{URL.revokeObjectURL(url);}catch{}}
+  for(const t of bgmTracks()){if(bgmList.urls.has(t.id))continue;const d=await idbGet('bgm_list_'+t.id),b=d&&mediaBlob(d);if(b)bgmList.urls.set(t.id,URL.createObjectURL(b));}
+  // Keep the playing track; if it was removed (or nothing is cued yet) cue the one now at its position.
+  const order=bgmTracks().filter(t=>bgmList.urls.has(t.id)).map(t=>t.id),at=order.indexOf(bgmList.current);
+  if(at>=0){bgmList.index=at;return;}
+  const wasPlaying=curBgm==='list'&&!bgmEl.list.paused;
+  if(bgmListCue(bgmList.index)&&wasPlaying)bgmEl.list.play().catch(()=>{});
+}
+const baseLoadBgm=loadBgm;
+loadBgm=async function(){await baseLoadBgm();await loadBgmPlaylist();};
 startBgm=function(slot){
-  if(bgmSingle()){slot=bgmSingleSlot();const a=bgmEl[slot];if(curBgm===slot&&a&&a.src&&!a.paused&&!cfg.muted){syncBgmGain(a);unlockAudio();return;}}
+  if(bgmPlaylistMode())slot='list';
+  else if(bgmSingle())slot=bgmSingleSlot();
+  if(bgmPlaylistMode()||bgmSingle()){const a=bgmEl[slot];if(curBgm===slot&&a&&a.src&&!a.paused&&!cfg.muted){syncBgmGain(a);unlockAudio();return;}}
   figureBase.startBgm(slot);
 };
 const scrollVideo=()=>document.getElementById('scroll-video');
@@ -491,7 +521,11 @@ renderAdmSettings = function(){
   // BGM playback mode lives inside the existing BGM card.
   const bgmHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('배경음악'));
   if(bgmHead){const box=document.createElement('div');box.className='figure-bgm-mode';
-    box.innerHTML=`<div class="adm-row"><label for="bgm-mode">재생 방식</label><select id="bgm-mode" onchange="saveBgmMode()"><option value="screen" ${bgmSingle()?'':'selected'}>화면별 전환</option><option value="single" ${bgmSingle()?'selected':''}>한 곡 연속 루핑</option></select></div><div class="adm-row"><label for="bgm-single-slot">연속 재생 곡</label><select id="bgm-single-slot" onchange="saveBgmMode()" ${bgmSingle()?'':'disabled'}>${BGM_SLOTS.map(s=>`<option value="${s}" ${bgmSingleSlot()===s?'selected':''}>${{idle:'대기',select:'선택',play:'뽑기'}[s]} 슬롯</option>`).join('')}</select></div><p class="figure-rule-note">한 곡 연속 루핑이면 화면이 바뀌어도 선택한 슬롯의 곡이 끊기지 않고 이어집니다. 소환서 화면과 개봉 연출 중 BGM 볼륨 자동 감소(25%)와 음소거는 그대로 적용됩니다. 선택한 슬롯에 업로드된 곡이 없으면 무음입니다.</p>`;
+    box.innerHTML=`<div class="adm-row"><label for="bgm-mode">재생 방식</label><select id="bgm-mode" onchange="saveBgmMode()"><option value="screen" ${bgmSingle()?'':'selected'}>화면별 전환</option><option value="single" ${bgmSingle()?'selected':''}>한 곡 연속 루핑</option><option value="playlist" ${bgmPlaylistMode()?'selected':''}>여러 곡 연속 재생</option></select></div><div class="adm-row"><label for="bgm-single-slot">연속 재생 곡</label><select id="bgm-single-slot" onchange="saveBgmMode()" ${bgmSingle()?'':'disabled'}>${BGM_SLOTS.map(s=>`<option value="${s}" ${bgmSingleSlot()===s?'selected':''}>${{idle:'대기',select:'선택',play:'뽑기'}[s]} 슬롯</option>`).join('')}</select></div><p class="figure-rule-note">한 곡 연속 루핑이면 화면이 바뀌어도 선택한 슬롯의 곡이 끊기지 않고 이어집니다. 소환서 화면과 개봉 연출 중 BGM 볼륨 자동 감소(25%)와 음소거는 그대로 적용됩니다. 선택한 슬롯에 업로드된 곡이 없으면 무음입니다.</p>
+      <h4 style="margin-top:14px">여러 곡 연속 재생 목록</h4>
+      ${bgmTracks().map((t,i,all)=>`<div class="adm-row"><label>${i+1}</label><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name||'곡 '+(i+1))}</span><button class="adm-btn sec" onclick="moveBgmTrack(${i},-1)" ${i?'':'disabled'} aria-label="위로">▲</button><button class="adm-btn sec" onclick="moveBgmTrack(${i},1)" ${i<all.length-1?'':'disabled'} aria-label="아래로">▼</button><button class="adm-btn dng" onclick="removeBgmTrack('${t.id}')">삭제</button></div>`).join('')}
+      <div class="adm-row"><button class="adm-btn sec" id="bgm-track-add" onclick="addBgmTrack()">+ 곡 추가</button></div>
+      <p class="figure-rule-note">재생 방식이 여러 곡 연속 재생이면 목록 순서대로 한 곡씩 재생하고, 마지막 곡 다음에는 처음으로 돌아갑니다. 화면이 바뀌어도 끊기지 않고, 볼륨 자동 감소와 음소거가 그대로 적용됩니다. mp3/m4a/wav, 곡당 최대 30MB.</p>`;
     bgmHead.parentElement.appendChild(box);}
   const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
 }
@@ -508,11 +542,32 @@ function saveScrollSelectionVisibility(){
 function saveBgmMode(){
   const mode=document.getElementById('bgm-mode').value,slot=document.getElementById('bgm-single-slot').value;
   const old={mode:cfg.bgmMode,slot:cfg.bgmSingleSlot};
-  cfg.bgmMode=mode==='single'?'single':'screen';if(BGM_SLOTS.includes(slot))cfg.bgmSingleSlot=slot;
+  cfg.bgmMode=['single','playlist'].includes(mode)?mode:'screen';if(BGM_SLOTS.includes(slot))cfg.bgmSingleSlot=slot;
   if(!saveCfg()){cfg.bgmMode=old.mode;cfg.bgmSingleSlot=old.slot;toast('설정 저장 실패');renderAdmSettings();return;}
   document.getElementById('bgm-single-slot').disabled=!bgmSingle();
-  if(curBgm)figureBase.startBgm(bgmSingle()?bgmSingleSlot():curBgm); // apply immediately (admin is reached from the idle screen)
-  toast(bgmSingle()?'한 곡 연속 루핑으로 저장됨':'화면별 전환으로 저장됨');
+  if(curBgm)figureBase.startBgm(bgmPlaylistMode()?'list':bgmSingle()?bgmSingleSlot():'idle'); // apply immediately (admin is reached from the idle screen)
+  toast(bgmPlaylistMode()?'여러 곡 연속 재생으로 저장됨':bgmSingle()?'한 곡 연속 루핑으로 저장됨':'화면별 전환으로 저장됨');
+}
+async function addBgmTrack(){
+  const f=await pickFile('audio/*');if(!f)return;
+  if(f.size>30*1024*1024){toast('30MB 이하만 가능');return;}
+  const buf=await fileToArrayBuffer(f);if(!buf){toast('파일 읽기 실패');return;}
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  if(!await idbPut('bgm_list_'+id,{buf,type:f.type||'audio/mpeg'})){toast('저장 실패 — 용량 초과/브라우저 제한');return;}
+  cfg.bgmPlaylist=[...bgmTracks(),{id,name:f.name}];
+  if(!saveCfg()){cfg.bgmPlaylist=bgmTracks().filter(t=>t.id!==id);await idbDel('bgm_list_'+id);toast('설정 저장 실패');return;}
+  await loadBgmPlaylist();renderAdmSettings();toast('곡 추가됨');
+}
+async function removeBgmTrack(id){
+  const old=bgmTracks();cfg.bgmPlaylist=old.filter(t=>t.id!==id);
+  if(!saveCfg()){cfg.bgmPlaylist=old;toast('설정 저장 실패');return;}
+  await idbDel('bgm_list_'+id);await loadBgmPlaylist();renderAdmSettings();toast('삭제됨');
+}
+function moveBgmTrack(i,step){
+  const list=[...bgmTracks()],j=i+step;if(j<0||j>=list.length)return;
+  const old=bgmTracks();[list[i],list[j]]=[list[j],list[i]];cfg.bgmPlaylist=list;
+  if(!saveCfg()){cfg.bgmPlaylist=old;toast('설정 저장 실패');return;}
+  loadBgmPlaylist();renderAdmSettings();
 }
 function updateFigureRuleInputs(){
   const enabled=document.getElementById('figure-probability-enabled').checked;
