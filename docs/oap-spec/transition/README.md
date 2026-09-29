@@ -4,22 +4,22 @@
 
 ## 자산
 
-`app/assets/oap/transition/transition-stacked.mp4` — 768×2048, **33프레임(1.1초, 1.8배속을 파일에 구움, v18)**, H.264 High 4.1, 0.49MB. 1배속 원본은 `resource/oap/ae-work/render/transition/transition-stacked-1x.mp4`에 보관했다.
+`app/assets/oap/transition/transition-stacked.mp4` — 768×2048, **61프레임 전부를 54fps로(1.13초, 1.8배속을 파일에 구움, v19)**, H.264 High 레벨 4.2(54fps 디코딩량이 4.1 한도를 넘음), 0.55MB. 1배속 원본은 `resource/oap/ae-work/render/transition/transition-stacked-1x.mp4`에 보관했다.
 
 - iPad Safari는 H.264 알파를 지원하지 않는다. 그래서 위 절반(768×1024)에 색(검정 위 premultiplied), 아래 절반에 알파(회색조)를 쌓았다. 앱이 WebGL로 다시 합성한다.
 - 세로 변환: 높이 1024에 맞춘 뒤 가운데를 잘랐다. 이전 세로 MP4는 색 변환으로 채도가 빠져 있었다. 이 파일은 AE 소스 색을 그대로 쓴다.
 - 1~6번째 PNG는 버리고(`-start_number 6`), 끝에 투명 프레임 2장을 덧붙였다.
 
 ```
-ffmpeg -framerate 30 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:v]format=rgba,tpad=stop=2:stop_mode=add:color=0x00000000,setpts=PTS/1.8,fps=30,scale=-2:1024:flags=lanczos,crop=768:1024,format=rgba,split[c][a];[c]premultiply=inplace=1,format=gbrp[cc];[a]format=rgba,alphaextract,format=gbrp[aa];[cc][aa]vstack,format=yuv420p[v]" -map "[v]" -c:v libx264 -profile:v high -level:v 4.1 -preset slow -crf 14 -g 15 -keyint_min 15 -sc_threshold 0 -r 30 -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv -an -movflags +faststart transition-stacked.mp4
+ffmpeg -framerate 54 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:v]format=rgba,tpad=stop=2:stop_mode=add:color=0x00000000,scale=-2:1024:flags=lanczos,crop=768:1024,format=rgba,split[c][a];[c]premultiply=inplace=1,format=gbrp[cc];[a]format=rgba,alphaextract,format=gbrp[aa];[cc][aa]vstack,format=yuv420p[v]" -map "[v]" -c:v libx264 -profile:v high -level:v 4.2 -preset slow -crf 14 -g 27 -keyint_min 27 -sc_threshold 0 -r 54 -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv -an -movflags +faststart transition-stacked.mp4
 ```
 
 ## 앱 동작 (`app/transition.js`, swc-apac-v11)
 
-- 재생 속도는 원본의 1.8배다(v11, 사용자 결정). v18부터는 파일 자체가 1.8배속이라 playbackRate 1로 재생한다. iPad에서 v11~v17의 playbackRate 1.8 재생에 살짝 버퍼가 있었기 때문이다(초당 54프레임 디코딩).
+- 재생 속도는 원본의 1.8배다(v11, 사용자 결정). v18부터는 파일 자체가 1.8배속이라 playbackRate 1로 재생한다. v11~v17의 playbackRate 1.8 재생은 iPad에서 살짝 버퍼가 있었다. v18에서는 30fps로 줄이며 프레임을 솎아내(원본 1.8장당 1장) 1장·2장 건너뛰기가 섞여 뚝뚝 끊겼다. 그래서 v19는 원본 프레임을 하나도 버리지 않고 54fps로 재생한다. AE 01_Transition 컴포지션도 같은 PNG 시퀀스 하나라, AE에서 1.8배속으로 렌더해도 프레임 솎기·블렌딩·Pixel Motion 외의 선택지는 없다.
 - 앱 시작 시 파일 전체를 메모리(Blob)에 올리고, 소리 없이 한 번 재생해 디코더를 깨운 뒤 첫 프레임에 멈춰 둔다. 매 전환이 끝나면 바로 0초로 되감아, 다음 전환은 탐색 없이 시작한다.
-- 프레임 6~26에서 화면을 완전히 덮는다(알파 254 이상).
-- 영상 시간 7/30초에 화면을 바꾼다(덮인 상태). 26/30초에 다음 화면의 등장 애니메이션을 시작한다(걷히는 중). 선택 화면 등장은 `afterReveal`로 이때까지 미룬다.
+- 프레임 11~48(54fps 기준)에서 화면을 완전히 덮는다(알파 254 이상).
+- 영상 시간 13/54초에 화면을 바꾼다(덮인 상태). 48/54초에 다음 화면의 등장 애니메이션을 시작한다(걷히는 중). 선택 화면 등장은 `afterReveal`로 이때까지 미룬다.
 - 전환 중에는 캔버스(z-index 4000)가 입력을 막는다.
 - 캔버스는 object-fit: cover처럼 화면을 채운다.
 - 실패 대비:
@@ -42,12 +42,12 @@ ffmpeg -framerate 30 -start_number 6 -i TRANS_ASIA_%05d.png -filter_complex "[0:
 ## 검증 (Chrome, `scripts/test-transition-browser.cjs`)
 
 - 대기 → 선택:
-  - 화면이 덮인 뒤(영상 t ≥ 6/30초, 완전히 덮이는 첫 프레임) 바뀐다.
-  - 등장 애니메이션은 t ≥ 0.82초에 시작한다.
+  - 화면이 덮인 뒤(영상 t ≥ 11/54초, 완전히 덮이는 첫 프레임) 바뀐다.
+  - 등장 애니메이션은 t ≥ 0.84초에 시작한다.
   - 전환 중에는 입력이 막히고, 끝나면 캔버스가 사라진다.
-- WebGL 합성 프레임 16과 소스 색 절반의 PSNR이 28dB를 넘는다(측정값 약 40dB).
+- WebGL 합성 프레임 30과 소스 색 절반의 PSNR이 28dB를 넘는다(측정값 약 40dB).
 - 선택 → 오픈은 전환 없이 즉시 이동한다.
-- BACK에서 1.8배속이 구워진 1.1초 전환이 메모리(Blob)에서 재생된다. HOME에서도 전환이 재생되고, 재고와 로그는 그대로다.
+- BACK에서 61프레임·54fps 전환이 메모리(Blob)에서 재생된다. HOME에서도 전환이 재생되고, 재고와 로그는 그대로다.
 - 스위치를 끄면 즉시 이동한다. 재생이 거부돼도 이동은 완료된다.
 
 다른 브라우저 테스트들은 전환을 끄고 실행한다(메모리의 `cfg.screenTransitions=false`만 바꾸고 저장소는 그대로 둔다).

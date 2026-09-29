@@ -7,10 +7,10 @@ class ScreenTransition {
   constructor(canvas, video) {
     this.canvas = canvas;
     this.video = video;
-    // The file has the 1.8x speed-up baked in (user decision, v18): 33 frames at 30 fps, so iPad decodes at the
-    // normal rate. Frames 6-26 cover the screen completely (alpha >= 254).
-    this.coverAt = 7 / 30;
-    this.revealAt = 26 / 30;
+    // The 1.8x speed-up is in the file (user decision): all 61 authored frames at 54 fps, played at rate 1.
+    // (v18 resampled to 30 fps by dropping frames, which stuttered.) Frames 11-48 cover the screen (alpha >= 254).
+    this.coverAt = 13 / 54;
+    this.revealAt = 48 / 54;
     this.rate = 1;
     this.busy = false;
     this.gl = null;
