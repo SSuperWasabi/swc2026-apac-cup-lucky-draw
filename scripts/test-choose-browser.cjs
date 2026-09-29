@@ -75,7 +75,7 @@ const state=page=>page.evaluate(()=>{
   const presented=await page.evaluate(async()=>{const l=document.getElementById('choose-bg-loop');l.pause();l.currentTime=1;await new Promise(r=>l.addEventListener('seeked',r,{once:true}));const shown=new Promise(r=>l.requestVideoFrameCallback((now,meta)=>{l.pause();r(meta.mediaTime);}));l.play();const t=await Promise.race([shown,new Promise(r=>setTimeout(()=>r(null),3000))]);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return t;});
   assert.ok(presented!==null&&Math.abs(presented-1)<0.04,`presented loop frame at ${presented}`);
   const shot=path.resolve('.tools/choose-v8-t3.png');await page.locator('#choose-stage').screenshot({path:shot});
-  const ae=path.resolve('resource/oap/ae-work/render/choose-v8/verify/full-t3.png');
+  const ae=path.resolve('resource/oap/ae-work/render/choose-v8-cup/verify/full-t3.png');
   if(fs.existsSync(ae)){
    const ff=path.resolve('.tools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe');
    // ffmpeg reports PSNR on stderr.

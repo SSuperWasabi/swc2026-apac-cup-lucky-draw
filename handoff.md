@@ -423,3 +423,12 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
   - 대기 영상별 타이틀 가독성
 - 참가상 결과 카드는 아직 기반(보라) 디자인이다. OAP 디자인 적용 여부는 미정.
 - 루트의 `fonts/`(LINE Seed·Unbounded 원본 패키지)는 로컬 참조용이라 커밋하지 않는다.
+
+## 22. 선택 화면 부제 CUP 추가 — 2026-09-29 (swc-apac-v15)
+
+- 사용자 요청: 선택 화면 좌상단 부제 "SWC2026 APAC LUCKY DRAW"를 **"SWC2026 APAC CUP LUCKY DRAW"**로 바꾼다.
+- 부제가 배경 영상에 구워져 있어 AE에서 다시 렌더했다.
+  - `export-choose-v8.jsx`에 `JOB.texts`(루트 레이어 이름 → 새 문구)를 추가하고, v8 사본에서 렌더했다. 사본은 저장하지 않았다.
+  - 기존과 같은 규격(1024×1366 High 4.1, CRF 16)으로 `choose-bg-intro/loop.mp4`를 교체했다.
+  - 부제 끝은 RANDOM 버튼과 겹치지 않는다.
+- `test-choose-browser`의 AE 기준 프레임을 `render/choose-v8-cup/verify/full-t3.png`로 바꿨다.

@@ -1,5 +1,6 @@
 // Exports CHOOSE YOUR SCROLL v8 app assets from the AE copy. Never saves the project.
-// Expects a global JOB = { project, out }.
+// Expects a global JOB = { project, out, texts? } — texts maps a root layer name to replacement text
+// (e.g. the baked subtitle), applied before anything is rendered.
 (function () {
   var ROOT = '21-1_CHOOSE_YOUR_SCROLL_INTRO_THEN_LOOP_V8';
   var log = [];
@@ -43,6 +44,11 @@
     if (app.project && (app.project.file || app.project.numItems > 0)) throw new Error('AE has a project open; refusing to continue.');
     app.open(new File(JOB.project));
     var root = find(ROOT);
+    if (JOB.texts) for (var name in JOB.texts) {
+      var doc = root.layer(name).property('ADBE Text Properties').property('ADBE Text Document');
+      if (doc.numKeys > 0) throw new Error('Text is keyframed: ' + name);
+      var v = doc.value; log.push(name + ': "' + v.text + '" -> "' + JOB.texts[name] + '"'); v.text = JOB.texts[name]; doc.setValue(v);
+    }
 
     // 1) Reference frames with every layer as authored.
     savePng(root, 3, JOB.out + '/verify/full-t3.png');

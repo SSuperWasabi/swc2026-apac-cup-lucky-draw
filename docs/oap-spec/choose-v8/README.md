@@ -14,7 +14,7 @@
 
 | 구분 | 내용 |
 | --- | --- |
-| 배경 영상(굽기) | APAC 금색 배경, 상단 명암 그라데이션, Com2uS Store 로고, CHOOSE YOUR / SCROLL / SWC2026 APAC LUCKY DRAW 제목과 그 페이드인 |
+| 배경 영상(굽기) | APAC 금색 배경, 상단 명암 그라데이션, Com2uS Store 로고, CHOOSE YOUR / SCROLL / SWC2026 APAC CUP LUCKY DRAW 제목과 그 페이드인. 부제는 v15에서 사용자 요청으로 AE 원본의 "SWC2026 APAC LUCKY DRAW"를 바꿔 다시 렌더했다(`export-choose-v8.jsx`의 `JOB.texts`, 결과 `resource/oap/ae-work/render/choose-v8-cup/`). AE 레이어 이름은 원본 그대로다 |
 | 앱 요소(14개) | 소환서 카드 12장, RANDOM 버튼, SELECT YOUR SCROLL 버튼 |
 
 배경은 AE에서 원본 영상의 재생 시점을 `3 − cos(πt/2)`로 왕복시키는 4초 주기 표현식이라 웹 재현 대상이 아니다.
