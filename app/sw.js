@@ -1,7 +1,7 @@
 /* SWC2026 APAC Cup Lucky Draw — Service Worker
    앱 자산을 사전 캐싱해 오프라인에서도 동작하게 한다.
    ※ 앱을 수정·재배포할 때는 CACHE 버전을 올려야 태블릿이 새 버전을 받는다. */
-const CACHE = 'swc2026-apac-lucky-draw-v19';
+const CACHE = 'swc2026-apac-lucky-draw-v20';
 const ASSETS = [
   './idle-video.js',
   './result-video.js',
@@ -11,7 +11,8 @@ const ASSETS = [
   './scroll-audio.js',
   './choose-screen.js',
   './transition.js',
-  './assets/oap/transition/transition-stacked.mp4',
+  './assets/oap/transition/transition-matte.mp4',
+  './assets/oap/transition/transition-color.mp4',
   './assets/oap/choose/choose-bg-intro.mp4',
   './assets/oap/choose/choose-bg-loop.mp4',
   './assets/oap/choose/random.webp',

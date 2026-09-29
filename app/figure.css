@@ -228,10 +228,15 @@
 .open-auto i{font-style:normal;font-size:1.1em}
 .open-auto:active{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8a4a0c,0 .6cqw 1.4cqw #0003}
 #scr-open.opening .open-auto{opacity:.45;pointer-events:none}
-/* Screen transition overlay (WebGL, stacked alpha video); blocks input while it plays. */
-.screen-transition{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:4000;display:none;pointer-events:none}
-.screen-transition.is-active{display:block;pointer-events:auto}
-.transition-source{position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1}
+/* Screen transition: two natively played videos blended straight onto the page (no stacking context between
+   them and the page). matte multiplies the page by (1 - alpha); colour adds premultiplied colour. */
+.screen-transition-layer{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;object-fit:cover;pointer-events:none;visibility:hidden;z-index:4000}
+.screen-transition-layer.is-active{visibility:visible}
+.screen-transition-layer.is-matte{mix-blend-mode:multiply}
+.screen-transition-layer.is-colour{z-index:4001;mix-blend-mode:screen}
+@supports (mix-blend-mode:plus-lighter){.screen-transition-layer.is-colour{mix-blend-mode:plus-lighter}}
+#transition-shield{position:fixed;inset:0;z-index:4002;display:none}
+#transition-shield.is-active{display:block}
 /* BGM playlist rows: the first ▲ and last ▼ cannot move. */
 .figure-bgm-mode .adm-btn:disabled{opacity:.35;cursor:default}
 /* Admin effect-sound rows: what each slot holds on this device. */

@@ -3,7 +3,7 @@
 Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 - 프로젝트 시작일: 2026-09-23
-- 현재 버전: `swc-apac-v19` / 캐시: `swc2026-apac-lucky-draw-v19`
+- 현재 버전: `swc-apac-v20` / 캐시: `swc2026-apac-lucky-draw-v20`
 - 기반 커밋: `ac2d609cb584ce21ed35a8b32183f80605828791` (Figure Draw v32 기능 + 사용자 확인 문서)
 - 작업 폴더: `F:\Download\SWC2026 APAC Cup_Lucky Draw App`
 - 새 저장소: https://github.com/SSuperWasabi/swc2026-apac-cup-lucky-draw

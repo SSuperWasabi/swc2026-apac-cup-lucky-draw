@@ -15,7 +15,7 @@ evaluate(fs.readFileSync('app/result-video.js','utf8'));
 evaluate(fs.readFileSync('app/transition.js','utf8'));
 evaluate(fs.readFileSync('app/choose-screen.js','utf8'));
 evaluate(fs.readFileSync('app/figure.js','utf8'));
-evaluate("stock={ip1:[0,10]};cfg.figureWinPercent=10;cfg.muted=true;"); // participation only: these journeys must reach the result directly (figure wins are covered below)
+evaluate("stock={ip1:[0,10]};cfg.figureWinPercent=10;cfg.muted=true;cfg.screenTransitions=false;"); // screen flow here; the transition has its own browser suite // participation only: these journeys must reach the result directly (figure wins are covered below)
 w.renderAdmSettings();
 const skip=w.document.getElementById('hide-scroll-selection');assert.equal(skip.checked,false);skip.checked=true;w.saveScrollSelectionVisibility();
 assert.equal(evaluate('cfg.hideScrollSelection'),true);

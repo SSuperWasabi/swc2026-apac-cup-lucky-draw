@@ -317,7 +317,7 @@ document.getElementById('scr-idle').addEventListener('click',e=>{
   e.stopImmediatePropagation();startFigureGame();
 },true);
 // The grid is built once; re-rendering would restart the card entrance animation.
-const screenTransition=new ScreenTransition(document.getElementById('transition-canvas'),document.getElementById('transition-video'));
+const screenTransition=new ScreenTransition(document.getElementById('transition-matte'),document.getElementById('transition-colour'),document.getElementById('transition-shield'));
 if(screenTransition.available)screenTransition.warm();
 // Screen-to-screen moves play the AE transition; the admin switch (현장 운영) turns it off on site.
 function withTransition(fn){if(cfg.screenTransitions!==false&&!document.hidden)screenTransition.run(fn);else fn();}

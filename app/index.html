@@ -559,7 +559,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v19';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v20';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1617,8 +1617,9 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 })();
 </script>
 <script src="draw-engine.js"></script>
-<canvas id="transition-canvas" class="screen-transition" aria-hidden="true"></canvas>
-<video id="transition-video" class="transition-source" src="assets/oap/transition/transition-stacked.mp4" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+<video id="transition-matte" class="screen-transition-layer is-matte" src="assets/oap/transition/transition-matte.mp4" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+<video id="transition-colour" class="screen-transition-layer is-colour" src="assets/oap/transition/transition-color.mp4" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+<div id="transition-shield" aria-hidden="true"></div>
 <div id="summon-stage" aria-hidden="true">
   <video id="summon-video-blur" src="assets/figure/zeratu-summon.mp4" muted playsinline preload="auto" tabindex="-1"></video>
   <div id="summon-veil" aria-hidden="true"></div>
