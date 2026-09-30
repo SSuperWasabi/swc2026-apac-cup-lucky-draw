@@ -70,3 +70,26 @@
 - iPad에서:
   - 상품 영상 첫 프레임이 흰 화면이 걷힐 때 바로 나오는지
   - 7개 상품 영상과 특별 영상의 업로드·재생
+
+## v22 변경: 등급 축하 화면과 등급 배지
+
+### A·B 등급 축하 화면
+- 재생 순서: 오픈 → 흰 화면 → **축하 화면(1.2초)** → 특별 영상(등록한 경우) → 상품 영상.
+- A·B 등급 상품에만 나온다. 그 밖의 등급은 축하 화면이 없다.
+- 파일(앱 내장): `app/assets/oap/grade/congrats-A.mp4`, `congrats-B.mp4`(1024×1366, 30fps, 1.2초, 축하음 포함)
+- 화면 구성:
+  - 배경: AE 전환(TRANS_ASIA) 완전 가림 구간
+  - 가운데 흰 SWC 소용돌이 로고는 지우지 않고 짙은 적주황 엠블럼으로 다시 칠했다(흰색만 풀어내 원래 모양·가장자리 유지).
+  - 글자: Unbounded Black 흰색 + 금색 입체 돌출. 등급 글자 → PRIZE → 부제(A: JACK POT!, B: CONGRATS!) 순서로 튀어 오른다.
+- 축하음: `congrats-sound.wav`(1.2초). 효과음 라이브러리 `Sacred_Scroll`의 Magical flash burst(0초) + Magical chime resonance(0.14초) + Scroll reveal sparkle(0.28초)를 합성했다. 특별 영상과 같은 방식으로 Web Audio로 미리 디코딩해 재생한다.
+- 제작 스크립트: AE 렌더 `resource/oap/ae-work/render/congrats/`, 배경 정리 이미지 `congrats/clean/`.
+
+### 등급 배지 (당첨 화면)
+- A~H 모든 등급이 같은 자리에 표시된다: 당첨 화면 가로 73%, 세로 9%, 폭 18%(우상단 로고 아래).
+- 에셋:
+  - 방패는 AE `07-1_2 vs 2 In game_Cam` > `[pre] 2vs2 TEAM NAME 01` > `text 7`(글자 없는 방패 엠블럼)을 벡터 그대로 키워 흰색으로 뽑았다(`resource/oap/ae-work/render/grade-shield/shield-blank-white.png`).
+  - 첨부 이미지 1의 원본 엠블럼에서 "10"이 차지하던 자리(외곽선 기준 가로 16~78%, 세로 22~71%)에 등급 글자(Unbounded Black)를 넣었다.
+  - 칠한 면과 글자 사이에는 원본과 같은 비율의 틈을 둔다. 글자의 속 공간·파인 곳은 칠하지 않는다.
+- 파일: `app/assets/oap/grade/grade-A.png` ~ `grade-H.png`(437×600, 흰색 투명)
+- 애니메이션: 상품 영상 1.4초(상품 등장)에 당첨음과 함께 튀어 오르고(0.5초), 흰 빛이 한 번 번진다. 밝은 배경 대비를 위해 옅은 갈색 그림자를 둔다.
+- 상품 영상이 없는 금색 카드 결과에는 배지를 따로 올리지 않는다(카드에 등급 글자가 이미 있다).

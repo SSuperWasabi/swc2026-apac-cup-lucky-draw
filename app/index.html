@@ -457,6 +457,7 @@
     <div class="win-stage" id="win-stage">
       <div class="win-frame">
         <video id="win-video" class="win-video" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+        <div class="win-grade" id="win-grade" aria-hidden="true"></div>
         <div class="win-staff" id="win-staff" role="status"></div>
       </div>
     </div>
@@ -556,7 +557,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v21';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v22';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){

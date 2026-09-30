@@ -157,18 +157,28 @@ function prepareWinMedia(result,epoch){
   winMediaTask=task;return task;
 }
 function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;}
-function hideSummon(){clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
+function hideSummon(){summonQueue=[];clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
 function endSummon(epoch){
   if(epoch!==figureEpoch||epoch!==summonEpoch||currentScreen!=='scr-open'||!summonActive())return;
   clearTimeout(summonTimer);summonEpoch=-1;showResult();startResultMedia();
   summonStage().classList.add('fading');summonTimer=setTimeout(()=>{if(summonStage().classList.contains('fading'))hideSummon();},450);
 }
-function playSummon(epoch,task){
-  const [v,b]=summonVideos();summonEpoch=epoch;clearTimeout(summonTimer);
-  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=task.special;x.load();});
+// 전체 화면 연출 영상을 차례로 재생한다: A·B 등급 축하 화면(앱 내장) -> 상품의 특별 영상(등록한 경우).
+let summonQueue=[];
+function playSummon(epoch,task,congrats){
+  summonQueue=[];
+  if(congrats)summonQueue.push({src:congrats,clip:congratsSoundReady?'congrats':null});
+  if(task&&task.special)summonQueue.push({src:task.special,clip:task.clip});
+  playSummonClip(epoch);
+}
+// 다음 연출 영상으로 넘어가거나, 남은 것이 없으면 결과 화면으로 간다.
+function summonNext(epoch){if(summonQueue.length&&epoch===summonEpoch&&summonActive()&&currentScreen==='scr-open')playSummonClip(epoch);else endSummon(epoch);}
+function playSummonClip(epoch){
+  const item=summonQueue.shift(),[v,b]=summonVideos();summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
+  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=item.src;x.load();});
   summonStage().classList.remove('fading');summonStage().classList.add('active');
   // Decoded audio is cued at the picture position; without it the clip's own track plays.
-  summonClip=task.clip||'summon';summonTrack=!task.clip;
+  summonClip=item.clip||'summon';summonTrack=!item.clip;
   v.muted=summonTrack?!!cfg.muted:true;v.volume=1;b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
   // iOS may refuse audible playback outside a gesture: fall back to a muted clip rather than skipping it.
   v.play().catch(()=>{if(v.muted)return endSummon(epoch);v.muted=true;v.play().catch(()=>endSummon(epoch));});b.play().catch(()=>{});
@@ -179,14 +189,14 @@ function playSummon(epoch,task){
 // (re)starts, otherwise long clips were cut at 8 + 3 s.
 function armSummonWatchdog(epoch){
   const v=summonVideos()[0],known=Number.isFinite(v.duration)&&v.duration>0;
-  clearTimeout(summonTimer);summonTimer=setTimeout(()=>endSummon(epoch),(known?Math.max(0,v.duration-v.currentTime):8)*1000+3000);
+  clearTimeout(summonTimer);summonTimer=setTimeout(()=>summonNext(epoch),(known?Math.max(0,v.duration-v.currentTime):8)*1000+3000);
 }
 ['loadedmetadata','playing'].forEach(type=>document.getElementById('summon-video').addEventListener(type,()=>{if(summonActive()&&summonEpoch>=0)armSummonWatchdog(summonEpoch);}));
-document.getElementById('summon-video').addEventListener('ended',()=>endSummon(summonEpoch));
+document.getElementById('summon-video').addEventListener('ended',()=>summonNext(summonEpoch));
 // Start the clip audio exactly where the picture (re)starts, and hold it while the picture stalls.
 document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack)ScrollSound.cue(summonClip,v.currentTime,!!cfg.muted);});
 document.getElementById('summon-video').addEventListener('waiting',()=>{if(summonActive()&&!summonTrack)ScrollSound.stop();});
-document.getElementById('summon-video').addEventListener('error',()=>endSummon(summonEpoch));
+document.getElementById('summon-video').addEventListener('error',()=>summonNext(summonEpoch));
 document.getElementById('summon-video').addEventListener('timeupdate',()=>{const [v,b]=summonVideos();if(summonActive()&&b.readyState>=2&&Math.abs(v.currentTime-b.currentTime)>.25){try{b.currentTime=v.currentTime;}catch{}}});
 // A complete Blob is seekable even when the local HTTP server has no Range support, and one download can feed several elements.
 async function prepareBlobVideo(ids){
@@ -283,9 +293,9 @@ function finishScrollReveal(){
   const epoch=figureEpoch,result=lastResult;
   const reveal=()=>{
     if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
-    const task=result?prepareWinMedia(result,epoch):null;
-    // Winning prize: 특별 영상 first (endSummon -> showResult), otherwise straight to the result.
-    if(task&&task.special)playSummon(epoch,task);else{showResult();startResultMedia();}
+    const task=result?prepareWinMedia(result,epoch):null,congrats=result?congratsClipOf(result):null;
+    // A·B 등급은 축하 화면 -> (특별 영상) -> 결과. 그 밖에는 특별 영상이 있으면 특별 영상 -> 결과, 없으면 바로 결과.
+    if(task&&(task.special||congrats))playSummon(epoch,task,congrats);else{showResult();startResultMedia();}
     whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
   };
   const keys=winMedia(result);
@@ -485,6 +495,10 @@ renderResult = function(){
   const win=winScreen.hasVideo(winMedia(lastResult).win);document.getElementById('scr-result').classList.toggle('oap-win',win);
   if(win){const t=new Date(),hms=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
    document.getElementById('win-staff').innerHTML=`<b>SHOW THIS SCREEN TO STAFF</b><span>No. ${lastResult.serial} · ${hms}</span>`;winScreen.play();}
+  // 등급 배지(A~H, 모든 등급 같은 자리): 상품이 나타나는 순간 함께 튀어 오른다.
+  const badge=document.getElementById('win-grade'),grade=prizeGradeOf(lastResult.prize);
+  badge.classList.remove('is-in');badge.hidden=!(win&&grade);
+  if(win&&grade){badge.style.setProperty('--grade-badge',`url(assets/oap/grade/grade-${grade}.png)`);badge.dataset.grade=grade;onWinVideoTime(WIN_PRODUCT_AT,()=>badge.classList.add('is-in'));}
 }
 function resultReturnSec(){const s=Number(cfg.resultReturnSec);return Number.isFinite(s)&&s>=3?Math.round(s):7;}
 function updateResultCountdown(){const e=document.getElementById('result-countdown');if(e)e.textContent=figurePopup?'영상 재생 중':`${Math.max(0,Math.ceil((resultDeadline-Date.now())/1000))}초 후 처음으로 돌아갑니다`;}
@@ -504,7 +518,8 @@ async function startResultMedia(){
 function closeFigurePopup(){if(figurePopup){figurePopup.querySelector('video').pause();figurePopup.remove();figurePopup=null;}if(currentScreen==='scr-result'){manageIdle();document.getElementById('rc-img').focus();}}
 resetToIdle = function(){
   if(drawing&&currentScreen==='scr-open')return;
-  if(currentScreen==='scr-result')withTransition(resetToIdleNow);else resetToIdleNow();
+  // 전환 영상: 선택 화면의 HOME, 결과 화면에서 메인으로 돌아갈 때(오픈 화면에서는 없음).
+  if(currentScreen==='scr-result'||currentScreen==='scr-scrolls')withTransition(resetToIdleNow);else resetToIdleNow();
 };
 function resetToIdleNow(){
   if(drawing&&currentScreen==='scr-open')return;
@@ -516,6 +531,11 @@ function resetToIdleNow(){
 }
 const PRIZE_GRADES=['A','B','C','D','E','F','G','H'];
 const prizeGradeOf=p=>{const g=String((p&&p.grade)||'').trim().toUpperCase();return PRIZE_GRADES.includes(g)?g:'';};
+// A·B 등급 축하 화면(AE 렌더, 1.2초, 축하음 포함). 축하음은 특별 영상처럼 Web Audio로 미리 디코딩해 iPad에서도 제스처 없이 나오게 한다.
+const CONGRATS_GRADES=['A','B'];
+const congratsClipOf=result=>{const g=prizeGradeOf(result&&result.prize);return CONGRATS_GRADES.includes(g)?`assets/oap/grade/congrats-${g}.mp4`:null;};
+let congratsSoundReady=false;
+if(typeof fetch==='function')fetch('assets/oap/grade/congrats-sound.wav').then(r=>r.ok?r.arrayBuffer():null).then(buf=>buf&&ScrollSound.addClip('congrats',buf)).then(ok=>{congratsSoundReady=!!ok;}).catch(()=>{});
 renderAdmIps = function(){
   figureBase.renderAdmIps();
   document.querySelectorAll('#pane-ips .adm-card').forEach((card,ii)=>{

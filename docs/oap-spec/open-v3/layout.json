@@ -39,16 +39,18 @@
     "left": 140,
     "top": 2299,
     "width": 1768,
-    "height": 120,
+    "height": 180,
     "text": "SLIDE TO OPEN THE SCROLL",
-    "baked": true
+    "baked": true,
+    "note": "v22 B안: 딥 퍼플 #3B1766, 골드 글자 #FFE58D, 높이 120 -> 180, 글자 58 -> 72(AE 재렌더)"
   },
   "dragGuide": {
     "left": 284,
-    "top": 2111,
+    "top": 2061,
     "width": 1480,
-    "height": 150,
-    "source": "AE reserved area (futureDragGuide)"
+    "height": 200,
+    "source": "AE reserved area (futureDragGuide)",
+    "note": "v22: 높이 150 -> 200, 아래 끝(2261) 유지"
   },
   "autoOpen": {
     "layout": "C (2026-09-28)",

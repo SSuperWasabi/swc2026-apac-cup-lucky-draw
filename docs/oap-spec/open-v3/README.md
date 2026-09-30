@@ -31,3 +31,14 @@
 
 - iPad에서 프레임 영상과 소환서 영상 2개 동시 디코딩 부하, 첫 진입 지연
 - iPad에서 AUTO OPEN 버튼 크기·위치 확인
+
+## v22 변경 (사용자 확정: SLIDE 박스 B안)
+
+- SLIDE TO OPEN THE SCROLL 박스를 AE에서 다시 렌더했다.
+  - 색: 딥 퍼플 `#3B1766`, 글자 골드 `#FFE58D`
+  - 크기: 높이 120 → 180, 글자 58 → 72, 방패 아이콘은 같은 비율로 확대
+  - 박스 윗변(2299)은 그대로이고, 방패와 글자를 박스 가운데에 다시 맞췄다.
+  - AUTO OPEN이 있던 아래 빈 공간으로 늘어난다.
+- 드래그 UI: 높이 150 → 200(아래 끝 2261 유지), 손잡이 폭 24%, 쉐브론 선 12 → 15px, 손잡이 화살표 확대.
+- 시안 비교(현재·A~D): `resource/oap/mockups/slide-bar/slide-bar-options.png`
+- 이전 프레임 영상: `resource/oap/ae-work/render/open-v3-barB/open-frame-loop-v21.mp4`

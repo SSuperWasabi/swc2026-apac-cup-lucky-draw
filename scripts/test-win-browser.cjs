@@ -177,6 +177,34 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   const grade=await page.evaluate(()=>{renderAdmIps();const sel=document.querySelector('#pane-ips .grade-select');sel.value='B';sel.onchange();return {options:[...sel.options].map(o=>o.value),saved:cfg.ips[0].prizes[0].grade};});
   assert.deepEqual(grade.options.slice(0,9),['','A','B','C','D','E','F','G','H']);assert.equal(grade.saved,'B');
   console.log('PASS: admin grade is an A-H dropdown and edits the prize grade');
+
+  // 10) A·B 등급: 축하 화면(앱 내장, 축하음 포함) -> 특별 영상 -> 상품 영상. 등급 배지는 상품 등장(1.4초)과 함께 나타난다.
+  await page.evaluate(()=>{resetToIdle();cfg.resultReturnSec=7;window.__clips=[];new MutationObserver(()=>{const s=document.getElementById('summon-video').getAttribute('src')||'';if(summonActive()&&window.__clips.at(-1)!==s)window.__clips.push(s);}).observe(document.getElementById('summon-video'),{attributes:true,attributeFilter:['src']});});
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+  await page.waitForFunction(()=>congratsSoundReady,null,{timeout:8000});
+  await start({grade:'A',kind:'figure',specialVideoKey:'test_special',winVideoKey:'test_win'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>summonActive()&&(document.getElementById('summon-video').getAttribute('src')||'').includes('congrats-A.mp4'),null,{timeout:15000});
+  const firstClip=await page.evaluate(()=>({src:document.getElementById('summon-video').getAttribute('src'),clip:summonClip,decoded:ScrollSound.has('congrats'),queued:summonQueue.length}));
+  assert.deepEqual({congrats:firstClip.src.endsWith('congrats-A.mp4'),clip:firstClip.clip,decoded:firstClip.decoded,queued:firstClip.queued},{congrats:true,clip:'congrats',decoded:true,queued:1},'A 등급은 축하 화면(축하음 디코딩)부터, 다음에 특별 영상 1개 대기');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
+  const seq=await page.evaluate(()=>window.__clips.map(s=>s.includes('congrats-A')?'축하':s.startsWith('blob:')?'특별':s));
+  assert.deepEqual(seq.slice(0,2),['축하','특별'],'순서: 축하 화면 -> 특별 영상');
+  await page.waitForFunction(()=>document.getElementById('win-grade').classList.contains('is-in'),null,{timeout:5000});
+  const badge=await page.evaluate(()=>{const b=document.getElementById('win-grade');return {grade:b.dataset.grade,t:winScreen.video.currentTime,hidden:b.hidden,bg:getComputedStyle(b).backgroundImage.includes('grade-A.png')};});
+  assert.equal(badge.grade,'A');assert.equal(badge.hidden,false);assert.equal(badge.bg,true);assert.ok(badge.t>=1.35&&badge.t<2.2,`배지가 상품 등장 시점에 나타남(영상 ${badge.t}초)`);
+  console.log('PASS: A 등급: 축하 화면(축하음) -> 특별 영상 -> 상품 영상, 등급 배지 A가 영상 %s초(상품 등장)에 나타남',badge.t.toFixed(3));
+
+  // 11) C 등급: 축하 화면 없이 바로 상품 영상, 배지는 같은 자리에 C.
+  await page.evaluate(()=>{resetToIdle();window.__clips=[];});
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+  await start({grade:'C',kind:'normal',winVideoKey:'test_win'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
+  await page.waitForFunction(()=>document.getElementById('win-grade').classList.contains('is-in'),null,{timeout:5000});
+  const c=await page.evaluate(()=>({clips:window.__clips.length,grade:document.getElementById('win-grade').dataset.grade,box:(()=>{const b=document.getElementById('win-grade'),f=b.offsetParent;return [Math.round(b.offsetLeft/f.offsetWidth*100),Math.round(b.offsetTop/f.offsetHeight*100),Math.round(b.offsetWidth/f.offsetWidth*100)];})() /* 등장 애니메이션의 확대·축소와 무관한 배치 위치 */}));
+  assert.deepEqual(c,{clips:0,grade:'C',box:[73,9,18]},'C 등급은 축하 화면 없음, 배지 위치는 모든 등급 동일');
+  console.log('PASS: C 등급: 축하 화면 없이 상품 영상, 배지 C가 같은 자리(가로 73%, 세로 9%, 폭 18%)');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

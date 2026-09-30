@@ -236,3 +236,15 @@
 .sfx-status{flex:1;min-width:0;margin-left:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sfx-ok{color:#9be89b}.sfx-none{color:#b3acd6}.sfx-bad{color:#ff8a80;font-weight:700}
 /* Admin per-file volume sliders. */
 .vol-row input[type=range]{flex:1;min-width:0;accent-color:#ffc928}.vol-row output{width:52px;text-align:right;font-variant-numeric:tabular-nums;color:#ffe9a8}
+/* 오픈 화면 드래그 UI 확대(v22, SLIDE 박스 B안과 함께): 높이 150 -> 200 master px, 아래 끝은 그대로. */
+#scr-open #scroll-drag .drag-hint{top:calc(100%*1530/1768);height:calc(100%*200/1768)}
+#scr-open .drag-track{--handle-width:24%}
+#scr-open .drag-chevron{width:36px;height:36px;border-right-width:15px;border-bottom-width:15px}
+#scr-open .drag-handle-arrows i{width:32px;height:42px}
+/* 당첨 화면 등급 배지(v22): SWC 10주년 방패 엠블럼의 "10" 자리에 등급 글자. 상품 등장(영상 1.4초)과 함께 튀어 오르고 빛이 한 번 번진다. */
+.win-grade{position:absolute;left:73%;top:9%;width:18%;aspect-ratio:437/600;background:var(--grade-badge) center/contain no-repeat;opacity:0;transform:scale(.3);transform-origin:50% 60%;pointer-events:none;z-index:2;filter:drop-shadow(0 .5cqw .9cqw #6a320040)} /* 밝은 배경에서도 흰 배지가 보이게 옅은 갈색 그림자 */
+.win-grade[hidden]{display:none}
+.win-grade.is-in{animation:grade-pop .5s cubic-bezier(.18,1.5,.45,1) forwards,grade-glow 1.1s .35s ease-out}
+@keyframes grade-pop{0%{opacity:0;transform:scale(.3) rotate(-8deg)}60%{opacity:1;transform:scale(1.12) rotate(2deg)}100%{opacity:1;transform:none}}
+@keyframes grade-glow{0%{filter:drop-shadow(0 .5cqw .9cqw #6a320040)}35%{filter:drop-shadow(0 0 2.2cqw #fffbe0)}100%{filter:drop-shadow(0 .5cqw .9cqw #6a320040)}}
+@media(prefers-reduced-motion:reduce){.win-grade.is-in{animation:none;opacity:1;transform:none}}
