@@ -352,7 +352,7 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
 - 사용자 요청: LUCKY DRAW EVENT가 대기 영상에 묻혀 잘 안 보임. 시안 4종(A 블랙 아웃라인, B 스티커형 이중 아웃라인, C 블랙 소프트 섀도, D 방사형 스크림)을 실제 대기 영상 위에서 캡처해 제안했다(`resource/oap/mockups/title-legibility-options.png`).
 - 사용자 선택은 **C**. 금색 광채 그림자를 검은 헤일로 그림자 3겹으로 바꿨다(`figure.css`, `drop-shadow` 0/4px, 0/12px, 6/26px). CSS만 바꿔서 기기 부하는 거의 없다.
 
-## 21. 현재 상태 요약과 현장 준비 목록 — 2026-09-30 갱신 (swc-apac-v22 기준)
+## 21. 현재 상태 요약과 현장 준비 목록 — 2026-09-30 갱신 (swc-apac-v23 기준)
 
 다음 세션은 이 절부터 읽으면 된다. 이 절은 최신 상태로 계속 갱신한다. 세부 경과는 §16~§24와 WORKLOG에 있다.
 
@@ -602,3 +602,17 @@ v7 문서의 참고값은 등장 시작 0.38초, 요소별 0.45초, 간격 0.055
   - 피규어: 쉐브론 선 15px.
   - 회귀 16종 통과. 앱/캐시 v22.
 - **시안:** `resource/oap/mockups/grade/grade-badges-A-H.png`, `grade-badges-brown-on-button.png`, `badge-A.png`, `badge-B.png`
+
+## 30. 팀 피드백 2차 최종 확정, 축하음 교체 — 2026-09-30 (swc-apac-v23)
+
+- **사용자 확정(v22 결과물 그대로):**
+  1. SLIDE TO OPEN THE SCROLL: B안
+  2. A·B 축하 화면 영상
+  3. 등급 배지 A~H 시안
+  4. 동작 방식
+  5. 전환 영상
+- **변경:** A·B 축하음을 `resource/audio/final-assets/SE_UI_LEVELUP.ogg`로 교체했다.
+  - 원본 약 2.0초 → 축하 화면 길이(1.2초)에 맞춰 0.9초부터 페이드아웃
+  - `congrats-sound.wav`(앱 재생용)와 `congrats-A.mp4`, `congrats-B.mp4`(영상 안 소리) 모두 교체
+  - 시안 폴더 `resource/oap/mockups/grade/`의 사본도 교체
+- **테스트:** 회귀 16종 통과. 앱/캐시 v23.

@@ -93,3 +93,12 @@
 - 파일: `app/assets/oap/grade/grade-A.png` ~ `grade-H.png`(437×600, 흰색 투명)
 - 애니메이션: 상품 영상 1.4초(상품 등장)에 당첨음과 함께 튀어 오르고(0.5초), 흰 빛이 한 번 번진다. 밝은 배경 대비를 위해 옅은 갈색 그림자를 둔다.
 - 상품 영상이 없는 금색 카드 결과에는 배지를 따로 올리지 않는다(카드에 등급 글자가 이미 있다).
+
+## v23 변경: 축하음 교체 (사용자 지정)
+
+- A·B 축하 화면의 축하음을 `resource/audio/final-assets/SE_UI_LEVELUP.ogg`로 바꿨다.
+  - 원본은 2.77초(소리가 들리는 구간 약 2.0초)이고, 축하 화면은 1.2초다.
+  - 원본 1.2초 지점은 이미 −27dB까지 줄어든 상태라, 0.9초부터 0.3초 동안 페이드아웃해 1.2초에 끝낸다.
+  - 형식: 48kHz 스테레오 WAV(`app/assets/oap/grade/congrats-sound.wav`). 앱은 이 파일을 Web Audio로 재생한다.
+  - `congrats-A.mp4`, `congrats-B.mp4`에도 같은 소리를 AAC로 넣었다(영상 자체는 v22와 같음).
+- 이전 합성 축하음: `resource/oap/ae-work/render/congrats/congrats-sound-v22-synth.wav`
