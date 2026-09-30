@@ -49,7 +49,7 @@ const server=http.createServer((req,res)=>{
   });
   assert.equal(arrow.count,10);assert.deepEqual(arrow.states.map(state=>state.active),[0,6,2,0]);assert.ok(arrow.states[1].left>arrow.states[2].left&&arrow.states[2].left>arrow.states[0].left);assert.equal(arrow.states[0].left,arrow.states[3].left);assert.equal(arrow.visible,'0.75'); // v3 open frame: the SLIDE text is baked into the AE video
 assert.equal(arrow.cueStroke,12);assert.deepEqual(arrow.cueAnimations,new Array(10).fill(1));
-  await page.locator('#scroll-open-btn').click(); // layout C AUTO OPEN pill
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter'); // automatic opening (keyboard path; the AUTO OPEN button was removed in v21)
   const cold=await page.evaluate(()=>({ready:scrollVideo().readyState,visible:getComputedStyle(document.getElementById('scroll-idle-video')).visibility,log:logArr.length}));
   assert.equal(cold.ready,0,'test must click while real video is still loading');
   assert.equal(cold.visible,'visible','keep idle image/video visible during preparation');assert.equal(cold.log,0);

@@ -130,18 +130,17 @@
 .choose-stage.loop-front #choose-bg-intro{opacity:0}
 #scr-scrolls .scroll-grid{position:absolute;inset:0;z-index:2}
 #scr-scrolls .scroll-choice{position:absolute;width:calc(100%*407.96/2048);height:calc(100%*545.2/2732);padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#scr-scrolls .scroll-choice img,.choose-random img,.choose-select img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+#scr-scrolls .scroll-choice img,.choose-select img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
 #scr-scrolls .card-lift{position:absolute;inset:0;display:block;transition:transform .18s ease-out,filter .18s ease-out}
 /* With a selection, the other cards step back so the chosen one reads at a glance. */
 .choose-stage.has-selection #scroll-grid .scroll-choice[aria-pressed=false] .card-lift{filter:brightness(.78) saturate(.9)}
-.choose-random,.choose-select{position:absolute;z-index:3;padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.choose-random{left:calc(100%*1316/2048);top:calc(100%*373/2732);width:calc(100%*620/2048);height:calc(100%*150/2732)}
+.choose-select{position:absolute;z-index:3;padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .choose-select{left:calc(100%*116/2048);top:calc(100%*2352.5/2732);width:calc(100%*1818/2048);height:calc(100%*255/2732)}
 /* Entrance: linear opacity (and 40 master px rise for cards), started on the intro's first frame. */
 .choose-anim{opacity:0}
 .choose-stage.is-playing .choose-anim{animation:choose-fade .45s linear calc(var(--delay,0s) + var(--sync,0s)) both}
 .choose-stage.is-playing .choose-rise{animation-name:choose-rise}
-.choose-random{--delay:.3s}.choose-select{--delay:.9s}
+.choose-select{--delay:.9s}
 @keyframes choose-fade{from{opacity:0}to{opacity:1}}
 @keyframes choose-rise{from{opacity:0;transform:translateY(calc(100cqh*40/2732))}to{opacity:1;transform:none}}
 /* Not in AE (approved direction 2026-09-27): selected state, button affordance and HOME control. */
@@ -162,18 +161,16 @@
 @keyframes card-twinkle{0%,100%{opacity:0;transform:scale(.2) rotate(0)}35%,55%{opacity:1;transform:scale(1) rotate(45deg)}75%{opacity:.7;transform:scale(.7) rotate(70deg)}}
 /* RANDOM / SELECT affordance: a shine clipped to the button art sweeps periodically after the entrance;
    SELECT also breathes once a card is chosen; both press down on touch. */
-.choose-random .btn-shine,.choose-select .btn-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
-.choose-random .btn-shine{-webkit-mask-image:url(assets/oap/choose/random.webp);mask-image:url(assets/oap/choose/random.webp)}
+.choose-select .btn-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
 .choose-select .btn-shine{-webkit-mask-image:url(assets/oap/choose/select.webp);mask-image:url(assets/oap/choose/select.webp)}
 .btn-shine::before{content:'';position:absolute;top:-10%;left:-40%;width:28%;height:120%;background:linear-gradient(100deg,#fff0 0%,#fffc 50%,#fff0 100%);transform:skewX(-18deg)}
 .choose-stage.is-interactive .btn-shine{opacity:1}
-.choose-stage.is-interactive .choose-random .btn-shine::before{animation:btn-sweep 3.2s ease-in-out .2s infinite}
 .choose-stage.is-interactive .choose-select .btn-shine::before{animation:btn-sweep 2.4s ease-in-out .6s infinite}
 @keyframes btn-sweep{0%{left:-40%}45%,100%{left:120%}}
 .choose-select .btn-glow{position:absolute;inset:4% .6% 8%;border-radius:1.4cqw;pointer-events:none;opacity:0;box-shadow:0 0 2.8cqw .1cqw #fff2a6,0 0 1cqw #ffe27acc}
 .choose-stage.has-selection.is-interactive .choose-select .btn-glow{animation:card-breathe 1.2s ease-in-out infinite}
-.choose-random img,.choose-select img{transition:transform .09s ease-out}
-.choose-random:active img,.choose-select:active img,.choose-random:active .btn-shine,.choose-select:active .btn-shine{transform:scale(.965)}
+.choose-select img{transition:transform .09s ease-out}
+.choose-select:active img,.choose-select:active .btn-shine{transform:scale(.965)}
 .choose-back{pointer-events:auto;position:absolute;z-index:4;left:1.8cqw;top:1.3cqh;height:3.6cqh;min-height:40px;padding:0 2.2cqw 0 1.7cqw;display:flex;align-items:center;gap:.9cqw;border-radius:999px;border:1px solid #ffffff8c;background:#3a1d0066;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font:700 max(14px,1.95cqw)/1 'Unbounded','Pretendard',sans-serif;letter-spacing:.04em;box-shadow:0 .3cqw 1cqw #0003}
 .choose-back span{font-size:1.15em;line-height:1}
 .choose-back:active{transform:scale(.96)}
@@ -224,10 +221,6 @@
 @keyframes win-staff-in{from{opacity:0;transform:translateY(1cqh)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.win-staff{animation-duration:.01s}}
 /* Automatic open, layout C: a compact pill centred in the empty band under the SLIDE bar (2483-2732). */
-.open-auto{position:absolute;z-index:3;left:50%;top:calc(100%*2472/2732);height:calc(100%*140/2732);translate:-50% 0;padding:0 4.2cqw;display:flex;align-items:center;gap:1.4cqw;border-radius:999px;border:2px solid #5b2f14;background:linear-gradient(180deg,#fff3b8,#ffd24d 55%,#f2a800);box-shadow:0 .5cqw 0 #8a4a0c,0 1cqw 2cqw #0003;color:#5b2f14;font:800 2.1cqw/1 'Unbounded',sans-serif;letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .09s ease-out,box-shadow .09s ease-out}
-.open-auto i{font-style:normal;font-size:1.1em}
-.open-auto:active{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8a4a0c,0 .6cqw 1.4cqw #0003}
-#scr-open.opening .open-auto{opacity:.45;pointer-events:none}
 /* Screen transition: two natively played videos blended straight onto the page (no stacking context between
    them and the page). matte multiplies the page by (1 - alpha); colour adds premultiplied colour. */
 .screen-transition-layer{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;object-fit:cover;pointer-events:none;visibility:hidden;z-index:4000}
@@ -241,3 +234,5 @@
 .figure-bgm-mode .adm-btn:disabled{opacity:.35;cursor:default}
 /* Admin effect-sound rows: what each slot holds on this device. */
 .sfx-status{flex:1;min-width:0;margin-left:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sfx-ok{color:#9be89b}.sfx-none{color:#b3acd6}.sfx-bad{color:#ff8a80;font-weight:700}
+/* Admin per-file volume sliders. */
+.vol-row input[type=range]{flex:1;min-width:0;accent-color:#ffc928}.vol-row output{width:52px;text-align:right;font-variant-numeric:tabular-nums;color:#ffe9a8}

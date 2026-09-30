@@ -87,20 +87,27 @@ const tmp=path.resolve('.tools');
   }
   await page.evaluate(()=>{document.getElementById('transition-colour').style.mixBlendMode='';screenTransition.show(false);screenTransition.rewind();});
 
-  // 3) Choose -> open cuts straight in; BACK and HOME transition; the draw state is untouched.
+  // 3) Only main -> selection and result -> main transition (team feedback, v21): open, BACK and HOME cut straight in.
   await page.locator('#scroll-grid .scroll-choice').first().click();
   await page.locator('#scroll-next').click();
   assert.deepEqual(await page.evaluate(()=>({busy:screenTransition.busy,screen:currentScreen})),{busy:false,screen:'scr-open'},'choose -> open has no transition');
   const stockBefore=await page.evaluate(()=>JSON.stringify(stock));
   await page.locator('#open-back').click();
-  assert.equal(await page.evaluate(()=>screenTransition.busy),true);
-  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-scrolls',null,{timeout:6000});
+  assert.deepEqual(await page.evaluate(()=>({busy:screenTransition.busy,screen:currentScreen})),{busy:false,screen:'scr-scrolls'},'BACK has no transition');
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
   await page.locator('#scr-scrolls .choose-back').click();
-  assert.equal(await page.evaluate(()=>screenTransition.busy),true);
-  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-idle',null,{timeout:6000});
+  assert.deepEqual(await page.evaluate(()=>({busy:screenTransition.busy,screen:currentScreen})),{busy:false,screen:'scr-idle'},'HOME has no transition');
   assert.equal(await page.evaluate(()=>JSON.stringify(stock)),stockBefore);
-  console.log('PASS: choose -> open cuts in; BACK (open -> choose) and HOME (choose -> idle) play the transition; no draw');
+  // A result returns to the main screen through the transition.
+  await page.evaluate(()=>{cfg.resultReturnSec=3;});
+  await page.locator('#idle-banner').click();
+  await page.waitForFunction(()=>!screenTransition.busy&&document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:8000});
+  await page.locator('#scroll-grid .scroll-choice').first().click();await page.locator('#scroll-next').click();
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
+  await page.waitForFunction(()=>screenTransition.busy&&currentScreen==='scr-result',null,{timeout:8000});
+  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-idle',null,{timeout:6000});
+  console.log('PASS: open, BACK and HOME cut straight in; the result returns to the main screen through the transition');
 
   // 4) A busy main thread does not stop the pictures: block it for 300 ms mid-transition, the clips keep advancing.
   await page.locator('#idle-banner').click();
@@ -111,13 +118,14 @@ const tmp=path.resolve('.tools');
 
   // 5) Admin switch off: immediate navigation. A refused video still completes the move.
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('is-interactive'),null,{timeout:5000});
-  await page.locator('#scr-scrolls .choose-back').click();await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-idle',null,{timeout:6000});
+  await page.locator('#scr-scrolls .choose-back').click();await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:3000});
   await page.evaluate(()=>{cfg.screenTransitions=false;});
   await page.locator('#idle-banner').click();
   assert.deepEqual(await page.evaluate(()=>({busy:screenTransition.busy,screen:currentScreen})),{busy:false,screen:'scr-scrolls'});
+  await page.locator('#scr-scrolls .choose-back').click();await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:3000});
   await page.evaluate(()=>{cfg.screenTransitions=true;document.getElementById('transition-colour').play=()=>Promise.reject(new Error('blocked'));});
-  await page.locator('#scr-scrolls .choose-back').click();
-  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-idle',null,{timeout:6000});
+  await page.locator('#idle-banner').click();
+  await page.waitForFunction(()=>!screenTransition.busy&&currentScreen==='scr-scrolls',null,{timeout:6000});
   console.log('PASS: switch off navigates at once; a refused video still completes the navigation');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}

@@ -146,7 +146,7 @@ assert.ok(Math.abs(evaluate('resultDeadline-Date.now()')-7000)<300,'결과 복�
 w.resetToIdle();
 // Admin: three grades (상급/일반/참가상) and 특별 영상 + 상품 영상 on every row; no click popup video.
 w.renderAdmIps();
-const kindSelects=[...w.document.querySelectorAll('#pane-ips .prize-edit-row select')];
+const kindSelects=[...w.document.querySelectorAll('#pane-ips .prize-edit-row select.kind-select')];
 assert.deepEqual([...kindSelects[0].options].map(o=>[o.value,o.textContent]),[['figure','상급'],['normal','일반'],['participation','참가상']]);
 const mediaRows=[...w.document.querySelectorAll('#pane-ips .figure-admin-media')];
 for(const m of mediaRows){assert.match(m.textContent,/특별 영상.*상품 영상/);assert.doesNotMatch(m.textContent,/팝업/);}

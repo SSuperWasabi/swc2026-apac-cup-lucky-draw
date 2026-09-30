@@ -40,11 +40,10 @@ const server=http.createServer((req,res)=>{
   const boxes=await page.evaluate(()=>{const st=document.getElementById('open-stage').getBoundingClientRect();const rel=s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:(r.left-st.left)*2,top:(r.top-st.top)*2,width:r.width*2,height:r.height*2};};
    return {stage:[st.width,st.height],slot:rel('#scroll-drag'),drag:rel('#scroll-drag .drag-hint')};});
   assert.deepEqual(boxes.stage,[1024,1366]);
-  const pill=await page.evaluate(()=>{const st=document.getElementById('open-stage').getBoundingClientRect(),r=document.getElementById('scroll-open-btn').getBoundingClientRect();return {top:(r.top-st.top)*2,bottom:(r.bottom-st.top)*2,cx:(r.left+r.width/2-st.left)*2,text:document.getElementById('scroll-open-btn').textContent.trim()};});
-  assert.ok(pill.top>=layout.instructionBar.top+layout.instructionBar.height+20&&pill.bottom<=2732-20&&Math.abs(pill.cx-1024)<2,`AUTO OPEN pill centred in the band under the SLIDE bar (${JSON.stringify(pill)})`);assert.match(pill.text,/^AUTO OPEN/);
+  assert.equal(await page.evaluate(()=>document.getElementById('scroll-open-btn')),null,'AUTO OPEN button removed (team feedback, v21)');
   for(const [id,key] of [['slot','videoSlot'],['drag','dragGuide']])
    for(const k of ['left','top','width','height'])assert.ok(Math.abs(boxes[id][k]-layout[key][k])<0.6,`${id}.${k} ${boxes[id][k]} vs ${layout[key][k]}`);
-  console.log('PASS: frame loop playing; slot and drag guide at AE master coordinates (+-0.6 px); AUTO OPEN pill (layout C) in the lower band');
+  console.log('PASS: frame loop playing; slot and drag guide at AE master coordinates (+-0.6 px); no AUTO OPEN button');
 
   // 2) Frame + scroll clip vs the AE IDLE_V3 frame at t=1 s (app overlays excluded).
   await page.evaluate(()=>document.getAnimations().forEach(a=>{if(a.animationName==='btn-sweep'||a.animationName==='drag-chevron-flow'){a.pause();a.currentTime=0;}}));

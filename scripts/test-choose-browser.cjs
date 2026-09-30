@@ -55,13 +55,13 @@ const state=page=>page.evaluate(()=>{
   // 2) Layout: final element boxes equal the AE spec (percent of the stage).
   await page.waitForTimeout(200); // input opens at the last entrance end; let it settle before measuring
   const boxes=await page.evaluate(()=>{const st=document.getElementById('choose-stage').getBoundingClientRect();const rel=e=>{const r=e.getBoundingClientRect();return {left:(r.left-st.left)/st.width*100,top:(r.top-st.top)/st.height*100,width:r.width/st.width*100,height:r.height/st.height*100};};
-   return {stage:{w:st.width,h:st.height},cards:[...document.querySelectorAll('#scroll-grid .scroll-choice')].map(rel),random:rel(document.getElementById('scroll-random')),select:rel(document.getElementById('scroll-next'))};});
+   return {stage:{w:st.width,h:st.height},cards:[...document.querySelectorAll('#scroll-grid .scroll-choice')].map(rel),random:document.getElementById('scroll-random'),select:rel(document.getElementById('scroll-next'))};});
   assert.ok(Math.abs(boxes.stage.w-1024)<0.5&&Math.abs(boxes.stage.h-1366)<0.5,'stage fills the iPad viewport');
   const expect=Object.fromEntries(layout.elements.map(e=>[e.id,e.percent]));
   const cmp=(got,want,id)=>{for(const k of ['left','top','width','height'])assert.ok(Math.abs(got[k]-want[k])<0.05,`${id}.${k} ${got[k].toFixed(3)} vs ${want[k]}`);};
   boxes.cards.forEach((b,i)=>cmp(b,expect['scroll-'+String(i+1).padStart(2,'0')],'scroll-'+(i+1)));
-  cmp(boxes.random,expect.random,'random');cmp(boxes.select,expect.select,'select');
-  console.log('PASS: 14 element boxes match layout.json within 0.05% of the stage');
+  assert.equal(boxes.random,null,'RANDOM button removed (team feedback, v21)');cmp(boxes.select,expect.select,'select');
+  console.log('PASS: 13 element boxes match layout.json within 0.05% of the stage (RANDOM removed)');
 
   // 3) Intro -> loop swap happens once, loop plays.
   await page.waitForFunction(()=>document.getElementById('choose-stage').classList.contains('loop-front'),null,{timeout:5000});
@@ -88,7 +88,8 @@ const state=page=>page.evaluate(()=>{
      const run=spawnSync(ff,['-hide_banner','-i',shot,'-i',ae,'-filter_complex',`[0:v]format=gbrp,crop=${w}:${h}:${x+dx}:${y+dy}[a];[1:v]format=gbrp,crop=${w}:${h}:${x}:${y}[b];[a][b]psnr`,'-f','null','-'],{encoding:'utf8'});
      best=Math.max(best,Number((/average:([0-9.]+)/.exec(run.stderr)||[0,0])[1]));}
     return best;};
-   const scores=Object.fromEntries(layout.elements.map(e=>[e.id,psnr(e.master)]));
+   // RANDOM was removed from the app (v21); its AE element stays in layout.json as the source record.
+   const scores=Object.fromEntries(layout.elements.filter(e=>e.id!=='random').map(e=>[e.id,psnr(e.master)]));
    for(const [id,v] of Object.entries(scores))assert.ok(v>30,`${id} vs AE PSNR ${v}`);
    console.log('PASS: every app element vs AE master frame (t=3 s) PSNR > 30 dB within +-1 device px; min %s dB',Math.min(...Object.values(scores)).toFixed(2));
   }else console.log('SKIP: AE reference frame not present locally');
@@ -111,13 +112,13 @@ const state=page=>page.evaluate(()=>{
   assert.match(look.otherFilter,/brightness\(0\.78\)/);assert.equal(look.selectedFilter,'none');assert.equal(look.twinkles,8,'only the selected card twinkles');assert.equal(look.selectGlow,true);
   assert.equal(look.home,'←HOME');assert.match(look.homeFont,/Unbounded/);
   assert.equal(await page.evaluate(()=>document.fonts.check('700 20px Unbounded')),true);
-  await page.locator('#scroll-random').click();
+  await page.locator('#scroll-grid .scroll-choice').nth(6).click();
   assert.equal(await page.evaluate(()=>document.querySelectorAll('#scroll-grid .scroll-choice[aria-pressed=true]').length),1);
   const stockBefore=await page.evaluate(()=>JSON.stringify(stock));
   await page.locator('#scroll-next').click();
   s=await state(page);assert.equal(s.screen,'scr-open');assert.deepEqual(s.classes.filter(c=>c!=='has-selection'),[]); // selection persists into the open screenassert.equal(s.introPaused,true);assert.equal(s.loopPaused,true);
   assert.equal(await page.evaluate(()=>JSON.stringify(stock)),stockBefore,'selecting does not draw');
-  console.log('PASS: single selection with glitter/dimming/SELECT glow, random, HOME label, SELECT opens scroll without drawing; choose videos stop on leave');
+  console.log('PASS: single selection with glitter/dimming/SELECT glow, reselect, HOME label, SELECT opens scroll without drawing; choose videos stop on leave');
 
   // 6) Re-entry replays the intro from its start; back button returns home.
   await page.evaluate(()=>backFromScroll());

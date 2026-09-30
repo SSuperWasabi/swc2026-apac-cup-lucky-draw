@@ -65,6 +65,40 @@ async function loadBgmPlaylist(){
   const wasPlaying=curBgm==='list'&&!bgmEl.list.paused;
   if(bgmListCue(bgmList.index)&&wasPlaying)bgmEl.list.play().catch(()=>{});
 }
+// Per-file volume set in the admin (cfg.soundVolumes, percent; 100 = the previous fixed level).
+const soundVolume=key=>{const v=Number((cfg.soundVolumes||{})[key]);return Number.isFinite(v)?Math.max(0,Math.min(150,v))/100:1;};
+const bgmKeyOf=a=>a===bgmEl.list?(bgmList.current?'bgm_list_'+bgmList.current:null):(Object.keys(bgmEl).find(k=>bgmEl[k]===a)?'bgm_'+Object.keys(bgmEl).find(k=>bgmEl[k]===a):null);
+syncBgmGain=function(a){
+  const c=audioCtx();let gain=bgmGains.get(a);
+  if(!gain&&c&&c.createMediaElementSource){
+    try{gain=c.createGain();const source=c.createMediaElementSource(a);source.connect(gain);gain.connect(c.destination);bgmGains.set(a,gain);}catch(error){console.warn('BGM audio routing failed',error);}
+  }
+  const key=bgmKeyOf(a),level=.4*(bgmDucked?.25:1)*(key?soundVolume(key):1);
+  if(gain){a.volume=1;gain.gain.cancelScheduledValues(c.currentTime);gain.gain.setValueAtTime(level,c.currentTime);}
+  else a.volume=Math.min(1,level); // Non-WebAudio fallback only.
+};
+playSfxReady=function(kind,c){
+  if(cfg.muted)return;
+  const slot={pick:'pick',win:'win',fanfare:'special',participation:'participation'}[kind],vol=slot?soundVolume('sfx_'+slot):1;
+  const buf=slot&&sfxBuf[slot];
+  if(buf&&c){try{const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=.8*vol;src.connect(g);g.connect(c.destination);src.start();return;}catch(e){}}
+  const a=slot&&sfxEl[slot];
+  if(a&&a.src){try{a.pause();a.currentTime=0;a.volume=Math.min(1,.8*vol);const p=a.play();if(p&&p.catch)p.catch(()=>{});return;}catch(e){}}
+  // Built-in tones when nothing is uploaded.
+  const t=(f,d,type,v,delay)=>tone(f,d,type,v*vol,delay);
+  if(kind==='pick'){t(660,.12,'triangle',.18);}
+  else if(kind==='win'){t(523,.18,'sine',.2);t(784,.25,'sine',.18,.12);}
+  else if(kind==='fanfare'){[523,659,784,1047].forEach((f,i)=>t(f,.3,'sawtooth',.16,i*.11));t(1047,.5,'sine',.14,.5);}
+  else if(kind==='participation'){t(523,.2,'sine',.14);t(392,.34,'sine',.12,.16);}
+};
+function setSoundVolume(key,value){
+  const old=cfg.soundVolumes;cfg.soundVolumes={...(cfg.soundVolumes||{}),[key]:Math.max(0,Math.min(150,Math.round(Number(value)||0)))};
+  if(!saveCfg()){cfg.soundVolumes=old;toast('설정 저장 실패');renderAdmSettings();return;}
+  Object.values(bgmEl).forEach(a=>{if(bgmGains.has(a))syncBgmGain(a);});
+  const out=document.querySelector(`.vol-row[data-key="${key}"] output`);if(out)out.textContent=cfg.soundVolumes[key]+'%';
+}
+const volumeRow=(key,label)=>{const v=Math.round(soundVolume(key)*100);const kind={sfx_pick:'pick',sfx_win:'win',sfx_special:'fanfare',sfx_participation:'participation'}[key];
+  return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output>${kind?`<button class="adm-btn sec" onclick="playSfx('${kind}')">▶ 듣기</button>`:''}</div>`;};
 const baseLoadBgm=loadBgm;
 loadBgm=async function(){await baseLoadBgm();await loadBgmPlaylist();};
 startBgm=function(slot){
@@ -327,7 +361,21 @@ const winScreen=new WinScreen(document.getElementById('win-stage'),()=>resetToId
 // On the AE win video the purple flash/bolts/confetti would sit on top of the design: keep only the fanfare.
 const baseSpecialFx=specialFx;
 // Win sounds by grade: 상급 = 스페셜, 일반 = 일반당첨, 참가상 = 참가상 (admin 효과음 slots).
-showResult=function(){renderResult();go('scr-result');const r=lastResult;if(r.top||r.isLucky)specialFx();else playSfx(r.high?'win':'participation');};
+const WIN_PRODUCT_AT=1.4;
+// On the product video the win sound waits for the product to appear, on the video clock (a stalled video still
+// gets its sound shortly after the same wall time); on a result card it plays at once.
+function onWinVideoTime(t,fn){
+  const v=winScreen.video,started=performance.now();let done=false;
+  const fire=()=>{if(done)return;done=true;clearTimeout(backstop);fn();};
+  const backstop=setTimeout(()=>{if(currentScreen==='scr-result')fire();else done=true;},(t+1)*1000);
+  const check=()=>{if(done)return;if(currentScreen!=='scr-result'){done=true;clearTimeout(backstop);return;}
+    if(winScreen.active&&v.currentTime>=t){fire();return;}
+    if(typeof v.requestVideoFrameCallback==='function'&&winScreen.active&&!v.paused)v.requestVideoFrameCallback(check);else requestAnimationFrame(check);};
+  setTimeout(check,0);
+}
+showResult=function(){renderResult();go('scr-result');const r=lastResult;
+  const sound=()=>{if(r.top||r.isLucky)specialFx();else playSfx(r.high?'win':'participation');};
+  if(document.getElementById('scr-result').classList.contains('oap-win'))onWinVideoTime(WIN_PRODUCT_AT,sound);else sound();};
 specialFx=function(){if(document.getElementById('scr-result').classList.contains('oap-win')){playSfx('fanfare');return;}baseSpecialFx();};
 window.chooseScreenDiagnostics=chooseScreen.diagnostics;
 buildChooseGrid(document.getElementById('scroll-grid'),i=>chooseScroll(i));
@@ -339,14 +387,13 @@ function renderScrollSelection(){
   document.getElementById('scroll-next').setAttribute('aria-disabled',String(selectedScroll==null));
 }
 function chooseScroll(i){selectedScroll=selectedScroll===i?null:i;playSfx('pick');renderScrollSelection();manageIdle();}
-function randomScroll(){selectedScroll=Math.floor(Math.random()*12);playSfx('pick');renderScrollSelection();manageIdle();}
-function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else withTransition(()=>{if(!drawing)go('scr-scrolls');});}}
+// Transitions play only main -> scroll selection and result -> main (team feedback, v21); BACK cuts straight in.
+function backFromScroll(){if(!drawing){if(cfg.hideScrollSelection===true)resetToIdle();else go('scr-scrolls');}}
 function openSelectedScroll(){
   if(selectedScroll==null){if(currentScreen==='scr-scrolls')chooseScreen.showHint('PLEASE SELECT<br>A SCROLL FIRST');return;}
-  // iOS audio unlock and BGM must run inside the tap. Choose -> open cuts straight in (user decision);
-  // only the direct idle -> open path (selection hidden) keeps the transition.
+  // iOS audio unlock and BGM must run inside the tap. Opening never plays the transition (team feedback, v21).
   summonUnlock();startBgm('play');
-  if(currentScreen==='scr-scrolls')openSelectedScrollNow();else withTransition(openSelectedScrollNow);
+  openSelectedScrollNow();
 }
 function openSelectedScrollNow(){
   if(scrollPreparedUrl&&scrollVideo().getAttribute('src')!==scrollPreparedUrl){scrollVideo().src=scrollPreparedUrl;scrollVideo().load();}
@@ -457,7 +504,7 @@ async function startResultMedia(){
 function closeFigurePopup(){if(figurePopup){figurePopup.querySelector('video').pause();figurePopup.remove();figurePopup=null;}if(currentScreen==='scr-result'){manageIdle();document.getElementById('rc-img').focus();}}
 resetToIdle = function(){
   if(drawing&&currentScreen==='scr-open')return;
-  if(['scr-scrolls','scr-open','scr-result'].includes(currentScreen))withTransition(resetToIdleNow);else resetToIdleNow();
+  if(currentScreen==='scr-result')withTransition(resetToIdleNow);else resetToIdleNow();
 };
 function resetToIdleNow(){
   if(drawing&&currentScreen==='scr-open')return;
@@ -467,13 +514,21 @@ function resetToIdleNow(){
   figureMediaUrls.forEach(url=>URL.revokeObjectURL(url));figureMediaUrls=[];
   selectedScroll=null;figureBase.resetToIdle();
 }
+const PRIZE_GRADES=['A','B','C','D','E','F','G','H'];
+const prizeGradeOf=p=>{const g=String((p&&p.grade)||'').trim().toUpperCase();return PRIZE_GRADES.includes(g)?g:'';};
 renderAdmIps = function(){
   figureBase.renderAdmIps();
   document.querySelectorAll('#pane-ips .adm-card').forEach((card,ii)=>{
     card.querySelectorAll('.prize-edit-row').forEach((row,pi)=>{
       const p=cfg.ips[ii].prizes[pi],kind=p.kind||(p.tier==='high'?'figure':'participation');
-      const select=row.querySelector('select');select.innerHTML=`<option value="figure" ${kind==='figure'?'selected':''}>상급</option><option value="normal" ${kind==='normal'?'selected':''}>일반</option><option value="participation" ${kind==='participation'?'selected':''}>참가상</option>`;
+      const select=row.querySelector('select');select.classList.add('kind-select');select.innerHTML=`<option value="figure" ${kind==='figure'?'selected':''}>상급</option><option value="normal" ${kind==='normal'?'selected':''}>일반</option><option value="participation" ${kind==='participation'?'selected':''}>참가상</option>`;
       select.onchange=()=>{p.kind=select.value;p.tier=p.kind==='figure'?'high':'normal';};
+      // Display grade A-H (shown on the win screen; A/B also get the congratulations card), separate from the draw class above.
+      const gradeIn=row.querySelector('input'),gradeSel=document.createElement('select');gradeSel.className='grade-select';gradeSel.title='표시 등급 (당첨 화면에 표기)';
+      // A value from before the A-H grades (free text) stays selectable until the operator picks a letter.
+      const raw=String(p.grade||'').trim(),cur=raw.toUpperCase(),legacy=raw&&!PRIZE_GRADES.includes(cur)?`<option value="${escAttr(raw)}" selected>기존값: ${esc(raw)}</option>`:'';
+      gradeSel.innerHTML='<option value="">등급 없음</option>'+PRIZE_GRADES.map(g=>`<option value="${g}" ${g===cur?'selected':''}>${g}등급</option>`).join('')+legacy;
+      gradeSel.onchange=()=>admEditPrize(ii,pi,'grade',gradeSel.value);gradeIn.replaceWith(gradeSel);
       row.querySelector('.cool-in').disabled=true;row.querySelector('.cool-in').title='피규어 드로우에서는 쿨다운을 사용하지 않습니다';
       const media=document.createElement('div');media.className='figure-admin-media';
       const btn=(field,label,clear)=>`<button class="adm-btn sec" onclick="uploadFigureVideo(${ii},${pi},'${field}')">${p[field]?'✓ ':''}${label}</button><button class="adm-btn sec" onclick="removeFigureVideo(${ii},${pi},'${field}')">${clear}</button>`;
@@ -540,6 +595,13 @@ function sfxStatusText(k){
 }
 renderAdmSettings = function(){
   figureBase.renderAdmSettings();
+  for(const [key,label] of [['bgm_idle','대기'],['bgm_select','선택'],['bgm_play','뽑기']]){
+    const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
+  }
+  document.querySelectorAll('#pane-settings [onclick^="removeBgmTrack"]').forEach(btn=>{const id=btn.getAttribute('onclick').match(/'([^']+)'/)[1];const n=btn.closest('.adm-row').querySelector('label').textContent;btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow('bgm_list_'+id,n+'번 곡'));});
+  for(const [key,label] of [['sfx_pick','뽑기음'],['sfx_win','일반당첨'],['sfx_special','스페셜'],['sfx_participation','참가상']]){
+    const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
+  }
   for(const k of SFX_SLOTS){
     const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('sfx_${k}'"]`);if(!btn)continue;
     const [cls,label]=sfxStatusText(k),span=document.createElement('span');span.className='sfx-status '+cls;span.textContent=label;span.dataset.sfx=k;

@@ -148,6 +148,35 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   assert.equal(sfx.type,'audio/wav');assert.equal(sfx.name,'zeratu-summon.wav');assert.match(sfx.row,/^✓ zeratu-summon\.wav · \d+\.\d초$/);assert.match(sfx.bad,/sfx-bad/);
   await page.evaluate(()=>delMedia('sfx_pick'));
   console.log('PASS: effect-sound upload stored as WAV with its name; admin rows show registered/default/unplayable');
+
+  // 7) With a product video the win sound waits for the product's entrance (AE PRIZE REVEAL in at 1.4 s, video clock).
+  await page.evaluate(()=>{resetToIdle();cfg.resultReturnSec=7;window.__sfxAt=[];const base=playSfx;playSfx=k=>{window.__sfxAt.push([k,winScreen.video.currentTime,currentScreen]);return base(k);};});
+  await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+  await start({winVideoKey:'test_win',kind:'normal'});
+  await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:15000});
+  await page.waitForFunction(()=>window.__sfxAt.some(x=>x[0]==='win'),null,{timeout:5000});
+  const at=await page.evaluate(()=>window.__sfxAt.find(x=>x[0]==='win'));
+  assert.ok(at[1]>=1.35&&at[1]<2.2,`win sound at video t=${at[1]} (product entrance 1.4 s)`);
+  console.log('PASS: win sound plays as the product appears on the win video (t=%s s)',at[1].toFixed(3));
+
+  // 8) Per-file volume: sliders under each BGM slot / effect sound, saved, applied to the BGM gain and effect gain.
+  await page.evaluate(()=>{resetToIdle();renderAdmSettings();});
+  const vol=await page.evaluate(async()=>{
+   const rows=[...document.querySelectorAll('.vol-row')].map(r=>r.dataset.key);
+   setSoundVolume('bgm_idle',50);setSoundVolume('sfx_win',150);
+   const a=bgmEl.idle;a.src=a.src||'assets/figure/zeratu-summon.wav';syncBgmGain(a);await new Promise(r=>setTimeout(r,50));
+   let gainSet=null;const c=audioCtx(),orig=c.createGain.bind(c);c.createGain=()=>{const g=orig();gainSet=g;return g;};
+   sfxBuf.win=c.createBuffer(1,800,8000);cfg.muted=false;playSfxReady('win',c);c.createGain=orig;cfg.muted=true;delete sfxBuf.win;
+   return {rows,saved:JSON.parse(localStorage.getItem('swc2026-apac-lucky-draw.config.v1')).soundVolumes,bgmGain:+bgmGains.get(a).gain.value.toFixed(3),sfxGain:+gainSet.gain.value.toFixed(3),out:document.querySelector('.vol-row[data-key=bgm_idle] output').textContent};});
+  assert.deepEqual(vol.rows,['bgm_idle','bgm_select','bgm_play','sfx_pick','sfx_win','sfx_special','sfx_participation']);
+  assert.deepEqual(vol.saved,{bgm_idle:50,sfx_win:150});assert.equal(vol.bgmGain,.2);assert.equal(vol.sfxGain,1.2);assert.equal(vol.out,'50%');
+  console.log('PASS: volume sliders for every BGM slot and effect sound; saved and applied (BGM 50% -> gain .2, 일반당첨 150% -> gain 1.2)');
+
+  // 9) Admin grade is an A-H dropdown (display grade), separate from the draw class.
+  const grade=await page.evaluate(()=>{renderAdmIps();const sel=document.querySelector('#pane-ips .grade-select');sel.value='B';sel.onchange();return {options:[...sel.options].map(o=>o.value),saved:cfg.ips[0].prizes[0].grade};});
+  assert.deepEqual(grade.options.slice(0,9),['','A','B','C','D','E','F','G','H']);assert.equal(grade.saved,'B');
+  console.log('PASS: admin grade is an A-H dropdown and edits the prize grade');
   assert.deepEqual(errors,[]);
  } finally {await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
