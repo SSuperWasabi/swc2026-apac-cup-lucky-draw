@@ -253,3 +253,7 @@
 #summon-stage.loading #summon-video,#summon-stage.loading #summon-video-blur,#summon-stage.loading #summon-veil{visibility:hidden}
 #summon-hold{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 #summon-hold[hidden]{display:none}
+/* A·B 축하 화면 전용 칸(v25): 특별 영상 위에 겹쳐 재생하고, 밑에서는 특별 영상을 미리 준비한다.
+   축하 화면이 끝나면 마지막 장면을 그대로 둔 채 특별 영상을 시작하고, 특별 영상 첫 장면이 오르면 걷는다. */
+#congrats-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none;display:none;z-index:3}
+#summon-stage.congrats #congrats-video{display:block}

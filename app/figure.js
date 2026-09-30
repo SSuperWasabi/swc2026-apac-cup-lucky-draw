@@ -162,20 +162,54 @@ function prepareWinMedia(result,epoch){
 }
 const summonPoster=document.getElementById('summon-video').getAttribute('poster');
 function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;if(summonPoster)summonVideos()[0].setAttribute('poster',summonPoster);}
-function hideSummon(){summonQueue=[];clearTimeout(summonTimer);ScrollSound.stop();summonLoadToken++;summonStage().classList.remove('active','fading','loading');document.getElementById('summon-hold').hidden=true;summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
+function hideSummon(){summonQueue=[];clearTimeout(summonTimer);ScrollSound.stop();summonLoadToken++;summonWarm=false;hideCongrats();summonStage().classList.remove('active','fading','loading');document.getElementById('summon-hold').hidden=true;summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
 function endSummon(epoch){
   if(epoch!==figureEpoch||epoch!==summonEpoch||currentScreen!=='scr-open'||!summonActive())return;
   clearTimeout(summonTimer);summonEpoch=-1;showResult();startResultMedia();
   summonStage().classList.add('fading');summonTimer=setTimeout(()=>{if(summonStage().classList.contains('fading'))hideSummon();},450);
 }
 // 전체 화면 연출 영상을 차례로 재생한다: A·B 등급 축하 화면(앱 내장) -> 상품의 특별 영상(등록한 경우).
-let summonQueue=[],summonLoadToken=0;
+let summonQueue=[],summonLoadToken=0,summonWarm=false;
 function playSummon(epoch,task,congrats,onShown){
   summonQueue=[];
-  if(congrats)summonQueue.push({src:congrats,clip:congratsSoundReady?'congrats':null});
   if(task&&task.special)summonQueue.push({src:task.special,clip:task.clip});
-  playSummonClip(epoch,onShown);
+  if(congrats)playCongrats(epoch,congrats,onShown);else playSummonClip(epoch,onShown);
 }
+// A·B 축하 화면은 전용 칸(#congrats-video)에서 재생한다. 그동안 밑의 연출 영상 칸에 특별 영상을 미리 올려
+// 첫 장면까지 준비해 두어, 축하 화면이 끝나는 순간 끊김 없이 이어진다.
+const congratsVideo=()=>document.getElementById('congrats-video');
+function hideCongrats(){const c=congratsVideo();summonStage().classList.remove('congrats');try{c.pause();}catch{}}
+function playCongrats(epoch,clip,onShown){
+  const c=congratsVideo(),stage=summonStage();summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
+  const token=++summonLoadToken;
+  if(summonQueue.length)preloadSummonClip(summonQueue[0]);
+  stage.classList.remove('fading','loading');stage.classList.add('active','congrats');
+  c.dataset.grade=clip.grade;if(c.getAttribute('src')!==clip.src){c.src=clip.src;c.load();}
+  // 축하음은 Web Audio로 그림 위치에 맞춰 낸다(iPad 제스처 밖 재생). 디코딩에 실패했으면 영상 자체 소리를 쓴다.
+  c.muted=congratsSoundReady?true:!!cfg.muted;c.volume=Math.min(1,sceneVolume());try{c.currentTime=0;}catch{}
+  summonFirstFrame(c,()=>{if(token===summonLoadToken&&onShown)onShown();});
+  c.play().catch(()=>{if(c.muted)return congratsDone(epoch,token);c.muted=true;c.play().catch(()=>congratsDone(epoch,token));});
+  summonTimer=setTimeout(()=>congratsDone(epoch,token),6000);
+}
+function congratsDone(epoch,token){
+  if(token!==summonLoadToken||epoch!==summonEpoch||!summonStage().classList.contains('congrats'))return;
+  clearTimeout(summonTimer);
+  // 축하 화면의 마지막 장면은 특별 영상 첫 장면이 오를 때까지 그대로 둔다.
+  if(summonQueue.length&&summonActive()&&currentScreen==='scr-open')playSummonClip(epoch,hideCongrats,true);
+  else endSummon(epoch);
+}
+// 특별 영상을 소리 없이 한 번 재생했다 멈춰 디코더와 첫 장면을 준비한다(iPad는 preload만으로는 준비하지 않는다).
+function preloadSummonClip(item){
+  const [v,b]=summonVideos();
+  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');v.removeAttribute('poster');
+  [v,b].forEach(x=>{x.muted=true;x.loop=false;x.src=item.src;x.load();});
+  summonWarm=true;
+  v.play().then(()=>{if(summonWarm){v.pause();try{v.currentTime=0;}catch{}}}).catch(()=>{}).finally(()=>{summonWarm=false;});
+}
+const congratsEl=congratsVideo();
+congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsSoundReady)ScrollSound.cue('congrats',congratsEl.currentTime,!!cfg.muted);});
+congratsEl.addEventListener('ended',()=>congratsDone(summonEpoch,summonLoadToken));
+congratsEl.addEventListener('error',()=>{if(congratsEl.getAttribute('src'))congratsDone(summonEpoch,summonLoadToken);});
 // 새 소스의 첫 장면이 실제로 화면에 올라온 뒤에 fn을 부른다.
 function summonFirstFrame(v,fn){
   if(typeof v.requestVideoFrameCallback==='function')v.requestVideoFrameCallback(()=>fn());
@@ -183,15 +217,17 @@ function summonFirstFrame(v,fn){
 }
 // 다음 연출 영상으로 넘어가거나, 남은 것이 없으면 결과 화면으로 간다.
 function summonNext(epoch){if(summonQueue.length&&epoch===summonEpoch&&summonActive()&&currentScreen==='scr-open')playSummonClip(epoch);else endSummon(epoch);}
-function playSummonClip(epoch,onShown){
-  const item=summonQueue.shift(),[v,b]=summonVideos(),stage=summonStage(),hold=document.getElementById('summon-hold');summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
+function playSummonClip(epoch,onShown,preloaded=false){
+  const item=summonQueue.shift(),[v,b]=summonVideos(),stage=summonStage(),hold=document.getElementById('summon-hold');summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();summonWarm=false;
+  // 축하 화면 밑에서 미리 준비한 특별 영상은 소스를 다시 넣지 않고 바로 재생한다(축하 화면 마지막 장면이 위를 덮고 있다).
+  const ready=preloaded&&v.getAttribute('src')===item.src;
   // 새 영상의 첫 장면 전까지 이전 소스(기본 제라툴 소환 영상·포스터)가 비치지 않게 가린다.
   // 앞 영상이 있으면 그 마지막 장면을 붙잡아 두고, 첫 영상이면 흰 화면이 덮고 있다.
   hold.hidden=true;
-  if(stage.classList.contains('active')&&v.readyState>=2&&v.videoWidth){try{hold.width=v.videoWidth;hold.height=v.videoHeight;hold.getContext('2d').drawImage(v,0,0);hold.hidden=false;}catch{hold.hidden=true;}}
-  stage.classList.add('loading');v.removeAttribute('poster');
+  if(!ready&&stage.classList.contains('active')&&v.readyState>=2&&v.videoWidth){try{hold.width=v.videoWidth;hold.height=v.videoHeight;hold.getContext('2d').drawImage(v,0,0);hold.hidden=false;}catch{hold.hidden=true;}}
+  if(!ready)stage.classList.add('loading');v.removeAttribute('poster');
   const token=++summonLoadToken;
-  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=item.src;x.load();});
+  summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');if(!ready)[v,b].forEach(x=>{x.src=item.src;x.load();});
   summonFirstFrame(v,()=>{if(token!==summonLoadToken)return;stage.classList.remove('loading');hold.hidden=true;if(onShown)onShown();});
   stage.classList.remove('fading');stage.classList.add('active');
   // Decoded audio is cued at the picture position; without it the clip's own track plays.
@@ -208,12 +244,13 @@ function armSummonWatchdog(epoch){
   const v=summonVideos()[0],known=Number.isFinite(v.duration)&&v.duration>0;
   clearTimeout(summonTimer);summonTimer=setTimeout(()=>summonNext(epoch),(known?Math.max(0,v.duration-v.currentTime):8)*1000+3000);
 }
-['loadedmetadata','playing'].forEach(type=>document.getElementById('summon-video').addEventListener(type,()=>{if(summonActive()&&summonEpoch>=0)armSummonWatchdog(summonEpoch);}));
-document.getElementById('summon-video').addEventListener('ended',()=>summonNext(summonEpoch));
+const summonPreparing=()=>summonWarm||summonStage().classList.contains('congrats')&&summonQueue.length>0;
+['loadedmetadata','playing'].forEach(type=>document.getElementById('summon-video').addEventListener(type,()=>{if(summonActive()&&summonEpoch>=0&&!summonPreparing())armSummonWatchdog(summonEpoch);}));
+document.getElementById('summon-video').addEventListener('ended',()=>{if(!summonPreparing())summonNext(summonEpoch);});
 // Start the clip audio exactly where the picture (re)starts, and hold it while the picture stalls.
-document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack)ScrollSound.cue(summonClip,v.currentTime,!!cfg.muted);});
-document.getElementById('summon-video').addEventListener('waiting',()=>{if(summonActive()&&!summonTrack)ScrollSound.stop();});
-document.getElementById('summon-video').addEventListener('error',()=>summonNext(summonEpoch));
+document.getElementById('summon-video').addEventListener('playing',()=>{const v=summonVideos()[0];if(summonActive()&&!summonTrack&&!summonPreparing())ScrollSound.cue(summonClip,v.currentTime,!!cfg.muted);});
+document.getElementById('summon-video').addEventListener('waiting',()=>{if(summonActive()&&!summonTrack&&!summonPreparing())ScrollSound.stop();});
+document.getElementById('summon-video').addEventListener('error',()=>{if(summonPreparing()){summonQueue=[];summonWarm=false;return;}summonNext(summonEpoch);});
 document.getElementById('summon-video').addEventListener('timeupdate',()=>{const [v,b]=summonVideos();if(summonActive()&&b.readyState>=2&&Math.abs(v.currentTime-b.currentTime)>.25){try{b.currentTime=v.currentTime;}catch{}}});
 // A complete Blob is seekable even when the local HTTP server has no Range support, and one download can feed several elements.
 async function prepareBlobVideo(ids){
@@ -557,7 +594,9 @@ const PRIZE_GRADES=['A','B','C','D','E','F','G','H'];
 const prizeGradeOf=p=>{const g=String((p&&p.grade)||'').trim().toUpperCase();return PRIZE_GRADES.includes(g)?g:'';};
 // A·B 등급 축하 화면(AE 렌더, 1.2초, 축하음 포함). 축하음은 특별 영상처럼 Web Audio로 미리 디코딩해 iPad에서도 제스처 없이 나오게 한다.
 const CONGRATS_GRADES=['A','B'];
-const congratsClipOf=result=>{const g=prizeGradeOf(result&&result.prize);return CONGRATS_GRADES.includes(g)?`assets/oap/grade/congrats-${g}.mp4`:null;};
+const congratsUrls={};
+const congratsClipOf=result=>{const g=prizeGradeOf(result&&result.prize);return CONGRATS_GRADES.includes(g)?{grade:g,src:congratsUrls[g]||`assets/oap/grade/congrats-${g}.mp4`}:null;};
+if(typeof fetch==='function')CONGRATS_GRADES.forEach(g=>fetch(`assets/oap/grade/congrats-${g}.mp4`).then(r=>r.ok?r.blob():null).then(b=>{if(b){const u=URL.createObjectURL(b);figureObjectUrls.push(u);congratsUrls[g]=u;}}).catch(()=>{}));
 let congratsSoundReady=false;
 if(typeof fetch==='function')fetch('assets/oap/grade/congrats-sound.wav').then(r=>r.ok?r.arrayBuffer():null).then(buf=>buf&&ScrollSound.addClip('congrats',buf)).then(ok=>{congratsSoundReady=!!ok;}).catch(()=>{});
 renderAdmIps = function(){

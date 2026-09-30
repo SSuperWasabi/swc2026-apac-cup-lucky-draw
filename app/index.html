@@ -557,7 +557,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v24';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v25';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1623,6 +1623,7 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
   <div id="summon-veil" aria-hidden="true"></div>
   <video id="summon-video" src="assets/figure/zeratu-summon.mp4" poster="assets/figure/zeratu-summon.jpg" playsinline preload="auto" tabindex="-1"></video>
   <canvas id="summon-hold" hidden aria-hidden="true"></canvas>
+  <video id="congrats-video" muted playsinline preload="auto" disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
 </div>
 <div id="scroll-whiteout" aria-hidden="true"></div>
 <script src="scroll-audio.js"></script>
