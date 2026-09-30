@@ -169,7 +169,7 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
    let gainSet=null;const c=audioCtx(),orig=c.createGain.bind(c);c.createGain=()=>{const g=orig();gainSet=g;return g;};
    sfxBuf.win=c.createBuffer(1,800,8000);cfg.muted=false;playSfxReady('win',c);c.createGain=orig;cfg.muted=true;delete sfxBuf.win;
    return {rows,saved:JSON.parse(localStorage.getItem('swc2026-apac-lucky-draw.config.v1')).soundVolumes,bgmGain:+bgmGains.get(a).gain.value.toFixed(3),sfxGain:+gainSet.gain.value.toFixed(3),out:document.querySelector('.vol-row[data-key=bgm_idle] output').textContent};});
-  assert.deepEqual(vol.rows,['bgm_idle','bgm_select','bgm_play','sfx_pick','sfx_win','sfx_special','sfx_participation']);
+  assert.deepEqual(vol.rows,['bgm_all','bgm_idle','bgm_select','bgm_play','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_scene']);
   assert.deepEqual(vol.saved,{bgm_idle:50,sfx_win:150});assert.equal(vol.bgmGain,.2);assert.equal(vol.sfxGain,1.2);assert.equal(vol.out,'50%');
   console.log('PASS: volume sliders for every BGM slot and effect sound; saved and applied (BGM 50% -> gain .2, 일반당첨 150% -> gain 1.2)');
 
@@ -183,6 +183,14 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
   await page.waitForFunction(()=>congratsSoundReady,null,{timeout:8000});
   await start({grade:'A',kind:'figure',specialVideoKey:'test_special',winVideoKey:'test_win'});
+  // 매 프레임: 흰 화면이 걷히기 시작했는데 연출 영상 칸에 기본 제라툴 소환 영상(또는 포스터)이 보이는 순간을 기록한다.
+  await page.evaluate(()=>{window.__leak=[];window.__liftAt=null;const w=document.getElementById('scroll-whiteout'),st=document.getElementById('summon-stage'),v=document.getElementById('summon-video');
+    const tick=()=>{if(currentScreen==='scr-result'){return;}
+      if(st.classList.contains('active')){const white=Number(getComputedStyle(w).opacity),loading=st.classList.contains('loading'),src=v.currentSrc||'';
+        const zeratu=!loading&&(!src.includes('congrats')&&!src.startsWith('blob:')||v.hasAttribute('poster')&&v.readyState<2);
+        if(white<.99&&window.__liftAt===null)window.__liftAt={loading,src:src.includes('congrats')?'축하':src,ready:v.readyState};
+        if(white<.99&&zeratu)window.__leak.push({white,loading,src,ready:v.readyState});}
+      requestAnimationFrame(tick);};requestAnimationFrame(tick);});
   await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
   await page.waitForFunction(()=>summonActive()&&(document.getElementById('summon-video').getAttribute('src')||'').includes('congrats-A.mp4'),null,{timeout:15000});
   const firstClip=await page.evaluate(()=>({src:document.getElementById('summon-video').getAttribute('src'),clip:summonClip,decoded:ScrollSound.has('congrats'),queued:summonQueue.length}));
@@ -190,6 +198,10 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
   const seq=await page.evaluate(()=>window.__clips.map(s=>s.includes('congrats-A')?'축하':s.startsWith('blob:')?'특별':s));
   assert.deepEqual(seq.slice(0,2),['축하','특별'],'순서: 축하 화면 -> 특별 영상');
+  const leak=await page.evaluate(()=>({leak:window.__leak,liftAt:window.__liftAt}));
+  assert.deepEqual(leak.leak,[],'축하 영상 전·영상 사이에 제라툴 소환 영상이 비치지 않음');
+  assert.deepEqual(leak.liftAt&&{loading:leak.liftAt.loading,src:leak.liftAt.src},{loading:false,src:'축하'},'흰 화면은 축하 영상 첫 장면이 나온 뒤에 걷힘');
+  console.log('PASS: 흰 화면은 축하 영상 첫 장면 뒤에 걷히고, 그 전·영상 사이에 제라툴 소환 영상이 보이지 않음');
   await page.waitForFunction(()=>document.getElementById('win-grade').classList.contains('is-in'),null,{timeout:5000});
   const badge=await page.evaluate(()=>{const b=document.getElementById('win-grade');return {grade:b.dataset.grade,t:winScreen.video.currentTime,hidden:b.hidden,bg:getComputedStyle(b).backgroundImage.includes('grade-A.png')};});
   assert.equal(badge.grade,'A');assert.equal(badge.hidden,false);assert.equal(badge.bg,true);assert.ok(badge.t>=1.35&&badge.t<2.2,`배지가 상품 등장 시점에 나타남(영상 ${badge.t}초)`);

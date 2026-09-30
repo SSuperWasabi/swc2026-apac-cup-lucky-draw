@@ -73,13 +73,13 @@ syncBgmGain=function(a){
   if(!gain&&c&&c.createMediaElementSource){
     try{gain=c.createGain();const source=c.createMediaElementSource(a);source.connect(gain);gain.connect(c.destination);bgmGains.set(a,gain);}catch(error){console.warn('BGM audio routing failed',error);}
   }
-  const key=bgmKeyOf(a),level=.4*(bgmDucked?.25:1)*(key?soundVolume(key):1);
+  const key=bgmKeyOf(a),level=.4*(bgmDucked?.25:1)*soundVolume('bgm_all')*(key?soundVolume(key):1);
   if(gain){a.volume=1;gain.gain.cancelScheduledValues(c.currentTime);gain.gain.setValueAtTime(level,c.currentTime);}
   else a.volume=Math.min(1,level); // Non-WebAudio fallback only.
 };
 playSfxReady=function(kind,c){
   if(cfg.muted)return;
-  const slot={pick:'pick',win:'win',fanfare:'special',participation:'participation'}[kind],vol=slot?soundVolume('sfx_'+slot):1;
+  const slot={pick:'pick',win:'win',fanfare:'special',participation:'participation'}[kind],vol=soundVolume('sfx_all')*(slot?soundVolume('sfx_'+slot):1);
   const buf=slot&&sfxBuf[slot];
   if(buf&&c){try{const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=.8*vol;src.connect(g);g.connect(c.destination);src.start();return;}catch(e){}}
   const a=slot&&sfxEl[slot];
@@ -94,9 +94,13 @@ playSfxReady=function(kind,c){
 function setSoundVolume(key,value){
   const old=cfg.soundVolumes;cfg.soundVolumes={...(cfg.soundVolumes||{}),[key]:Math.max(0,Math.min(150,Math.round(Number(value)||0)))};
   if(!saveCfg()){cfg.soundVolumes=old;toast('설정 저장 실패');renderAdmSettings();return;}
-  Object.values(bgmEl).forEach(a=>{if(bgmGains.has(a))syncBgmGain(a);});
+  Object.values(bgmEl).forEach(a=>{if(bgmGains.has(a))syncBgmGain(a);});applySceneVolume();
   const out=document.querySelector(`.vol-row[data-key="${key}"] output`);if(out)out.textContent=cfg.soundVolumes[key]+'%';
 }
+// 연출 소리(소환서 개봉·대기 소리·특별/축하 영상 소리) = 효과음 전체 × 연출 소리.
+const sceneVolume=()=>soundVolume('sfx_all')*soundVolume('sfx_scene');
+function applySceneVolume(){ScrollSound.setVolume(sceneVolume());}
+applySceneVolume();
 const volumeRow=(key,label)=>{const v=Math.round(soundVolume(key)*100);const kind={sfx_pick:'pick',sfx_win:'win',sfx_special:'fanfare',sfx_participation:'participation'}[key];
   return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output>${kind?`<button class="adm-btn sec" onclick="playSfx('${kind}')">▶ 듣기</button>`:''}</div>`;};
 const baseLoadBgm=loadBgm;
@@ -156,30 +160,43 @@ function prepareWinMedia(result,epoch){
   })():Promise.resolve(false);
   winMediaTask=task;return task;
 }
-function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;}
-function hideSummon(){summonQueue=[];clearTimeout(summonTimer);ScrollSound.stop();summonStage().classList.remove('active','fading');summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
+const summonPoster=document.getElementById('summon-video').getAttribute('poster');
+function restoreSummonSource(){if(summonDefaultSrc===null)return;summonVideos().forEach(v=>{v.src=summonDefaultSrc;v.load();});summonDefaultSrc=null;if(summonPoster)summonVideos()[0].setAttribute('poster',summonPoster);}
+function hideSummon(){summonQueue=[];clearTimeout(summonTimer);ScrollSound.stop();summonLoadToken++;summonStage().classList.remove('active','fading','loading');document.getElementById('summon-hold').hidden=true;summonVideos().forEach(v=>{v.pause();try{v.currentTime=0;}catch{}});restoreSummonSource();}
 function endSummon(epoch){
   if(epoch!==figureEpoch||epoch!==summonEpoch||currentScreen!=='scr-open'||!summonActive())return;
   clearTimeout(summonTimer);summonEpoch=-1;showResult();startResultMedia();
   summonStage().classList.add('fading');summonTimer=setTimeout(()=>{if(summonStage().classList.contains('fading'))hideSummon();},450);
 }
 // 전체 화면 연출 영상을 차례로 재생한다: A·B 등급 축하 화면(앱 내장) -> 상품의 특별 영상(등록한 경우).
-let summonQueue=[];
-function playSummon(epoch,task,congrats){
+let summonQueue=[],summonLoadToken=0;
+function playSummon(epoch,task,congrats,onShown){
   summonQueue=[];
   if(congrats)summonQueue.push({src:congrats,clip:congratsSoundReady?'congrats':null});
   if(task&&task.special)summonQueue.push({src:task.special,clip:task.clip});
-  playSummonClip(epoch);
+  playSummonClip(epoch,onShown);
+}
+// 새 소스의 첫 장면이 실제로 화면에 올라온 뒤에 fn을 부른다.
+function summonFirstFrame(v,fn){
+  if(typeof v.requestVideoFrameCallback==='function')v.requestVideoFrameCallback(()=>fn());
+  else v.addEventListener('playing',()=>requestAnimationFrame(()=>requestAnimationFrame(fn)),{once:true});
 }
 // 다음 연출 영상으로 넘어가거나, 남은 것이 없으면 결과 화면으로 간다.
 function summonNext(epoch){if(summonQueue.length&&epoch===summonEpoch&&summonActive()&&currentScreen==='scr-open')playSummonClip(epoch);else endSummon(epoch);}
-function playSummonClip(epoch){
-  const item=summonQueue.shift(),[v,b]=summonVideos();summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
+function playSummonClip(epoch,onShown){
+  const item=summonQueue.shift(),[v,b]=summonVideos(),stage=summonStage(),hold=document.getElementById('summon-hold');summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
+  // 새 영상의 첫 장면 전까지 이전 소스(기본 제라툴 소환 영상·포스터)가 비치지 않게 가린다.
+  // 앞 영상이 있으면 그 마지막 장면을 붙잡아 두고, 첫 영상이면 흰 화면이 덮고 있다.
+  hold.hidden=true;
+  if(stage.classList.contains('active')&&v.readyState>=2&&v.videoWidth){try{hold.width=v.videoWidth;hold.height=v.videoHeight;hold.getContext('2d').drawImage(v,0,0);hold.hidden=false;}catch{hold.hidden=true;}}
+  stage.classList.add('loading');v.removeAttribute('poster');
+  const token=++summonLoadToken;
   summonDefaultSrc=summonDefaultSrc??v.getAttribute('src');[v,b].forEach(x=>{x.src=item.src;x.load();});
-  summonStage().classList.remove('fading');summonStage().classList.add('active');
+  summonFirstFrame(v,()=>{if(token!==summonLoadToken)return;stage.classList.remove('loading');hold.hidden=true;if(onShown)onShown();});
+  stage.classList.remove('fading');stage.classList.add('active');
   // Decoded audio is cued at the picture position; without it the clip's own track plays.
   summonClip=item.clip||'summon';summonTrack=!item.clip;
-  v.muted=summonTrack?!!cfg.muted:true;v.volume=1;b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
+  v.muted=summonTrack?!!cfg.muted:true;v.volume=Math.min(1,sceneVolume());b.muted=true;v.loop=b.loop=false;try{v.currentTime=0;b.currentTime=0;}catch{}
   // iOS may refuse audible playback outside a gesture: fall back to a muted clip rather than skipping it.
   v.play().catch(()=>{if(v.muted)return endSummon(epoch);v.muted=true;v.play().catch(()=>endSummon(epoch));});b.play().catch(()=>{});
   armSummonWatchdog(epoch);
@@ -295,8 +312,15 @@ function finishScrollReveal(){
     if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
     const task=result?prepareWinMedia(result,epoch):null,congrats=result?congratsClipOf(result):null;
     // A·B 등급은 축하 화면 -> (특별 영상) -> 결과. 그 밖에는 특별 영상이 있으면 특별 영상 -> 결과, 없으면 바로 결과.
-    if(task&&(task.special||congrats))playSummon(epoch,task,congrats);else{showResult();startResultMedia();}
-    whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);});});
+    const lift=()=>{if(epoch===figureEpoch&&(currentScreen==='scr-result'||summonActive()))scrollWhiteout(0,true);};
+    if(task&&(task.special||congrats)){
+      // 연출 영상은 첫 장면이 화면에 오른 뒤에 흰 화면을 걷는다. 멈춘 경우에도 1.5초 뒤에는 걷는다.
+      let lifted=false;const once=()=>{if(!lifted){lifted=true;lift();}};
+      playSummon(epoch,task,congrats,once);setTimeout(once,1500);
+    }else{
+      showResult();startResultMedia();
+      whiteoutFrame=requestAnimationFrame(()=>{whiteoutFrame=requestAnimationFrame(lift);});
+    }
   };
   const keys=winMedia(result);
   if(!keys.special&&!keys.win){reveal();return;}
@@ -317,7 +341,7 @@ scrollVideo().addEventListener('error',scrollPlaybackError);
 function playOpeningVideo(){
   const v=scrollVideo();scrollSeekTarget=null;scrollScrubbing=false;scrollPlaybackFailed=false;
   openingAudioActive=true;openingNativeAudio=!ScrollSound.has('open');
-  ScrollSound.stop();scrollMix(true);unlockAudio();v.muted=openingNativeAudio?!!cfg.muted:true;v.volume=1;
+  ScrollSound.stop();scrollMix(true);unlockAudio();v.muted=openingNativeAudio?!!cfg.muted:true;v.volume=Math.min(1,sceneVolume());
   v.playbackRate=AUTO_OPEN_RATE;v.preservesPitch=false;if("webkitPreservesPitch" in v)v.webkitPreservesPitch=false;
   v.loop=false;v.play().catch(scrollPlaybackError);
 }
@@ -618,7 +642,6 @@ renderAdmSettings = function(){
   for(const [key,label] of [['bgm_idle','대기'],['bgm_select','선택'],['bgm_play','뽑기']]){
     const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
   }
-  document.querySelectorAll('#pane-settings [onclick^="removeBgmTrack"]').forEach(btn=>{const id=btn.getAttribute('onclick').match(/'([^']+)'/)[1];const n=btn.closest('.adm-row').querySelector('label').textContent;btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow('bgm_list_'+id,n+'번 곡'));});
   for(const [key,label] of [['sfx_pick','뽑기음'],['sfx_win','일반당첨'],['sfx_special','스페셜'],['sfx_participation','참가상']]){
     const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
   }
@@ -653,7 +676,15 @@ renderAdmSettings = function(){
       ${bgmTracks().map((t,i,all)=>`<div class="adm-row"><label>${i+1}</label><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name||'곡 '+(i+1))}</span><button class="adm-btn sec" onclick="moveBgmTrack(${i},-1)" ${i?'':'disabled'} aria-label="위로">▲</button><button class="adm-btn sec" onclick="moveBgmTrack(${i},1)" ${i<all.length-1?'':'disabled'} aria-label="아래로">▼</button><button class="adm-btn dng" onclick="removeBgmTrack('${t.id}')">삭제</button></div>`).join('')}
       <div class="adm-row"><button class="adm-btn sec" id="bgm-track-add" onclick="addBgmTrack()">+ 곡 추가</button></div>
       <p class="figure-rule-note">재생 방식이 여러 곡 연속 재생이면 목록 순서대로 한 곡씩 재생하고, 마지막 곡 다음에는 처음으로 돌아갑니다. 화면이 바뀌어도 끊기지 않고, 볼륨 자동 감소와 음소거가 그대로 적용됩니다. mp3/m4a/wav, 곡당 최대 30MB.</p>`;
-    bgmHead.parentElement.appendChild(box);}
+    bgmHead.parentElement.appendChild(box);
+    // 곡별 볼륨 줄(연속 재생 목록 각 곡 아래)과 BGM 전체 볼륨(카드 제목 아래, 모든 재생 방식에 적용).
+    box.querySelectorAll('[onclick^="removeBgmTrack"]').forEach(btn=>{const id=btn.getAttribute('onclick').match(/'([^']+)'/)[1];const n=btn.closest('.adm-row').querySelector('label').textContent;btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow('bgm_list_'+id,n+'번 곡'));});
+    bgmHead.insertAdjacentHTML('afterend',volumeRow('bgm_all','BGM 전체'));}
+  // 효과음 전체 볼륨(카드 제목 아래)과 연출 소리 볼륨.
+  const sfxHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('효과음'));
+  if(sfxHead){sfxHead.insertAdjacentHTML('afterend',volumeRow('sfx_all','효과음 전체'));
+    const last=sfxHead.parentElement.querySelector('.muted-note');
+    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하 화면 소리. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>');}
   const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
 }
 function saveScreenTransitions(){

@@ -1,6 +1,9 @@
 /* Short overlapping audio grains follow a paused video's scrub position; decoded clips back the idle loop and the summon video. */
 const ScrollSound=(()=>{
-  let context=null,forward=null,reverse=null,previous=null,lastGrain=-Infinity;
+  let context=null,forward=null,reverse=null,previous=null,lastGrain=-Infinity,master=null,volume=1;
+  // 연출 소리 전체 볼륨(관리자 설정): 모든 소리를 이 노드를 거쳐 내보낸다.
+  const out=()=>{if(!master&&context){master=context.createGain();master.gain.value=volume;master.connect(context.destination);}return master||context.destination;};
+  function setVolume(v){volume=Math.max(0,Number(v)||0);if(master)master.gain.value=volume;}
   const voices=new Set(),clips={};
   async function load(url){const response=await fetch(url);if(!response.ok)throw Error('audio');return context.decodeAudioData(await response.arrayBuffer());}
   async function prepare(){
@@ -31,7 +34,7 @@ const ScrollSound=(()=>{
     if(!has(name))return false;
     if(context.state!=='running')context.resume().catch(()=>{});
     const buffer=clips[name],source=context.createBufferSource();source.buffer=buffer;source.loop=loop;source.playbackRate.value=rate;
-    source.connect(context.destination);voices.add(source);
+    source.connect(out());voices.add(source);
     source.onended=()=>{voices.delete(source);source.disconnect();};
     const at=Math.max(0,Number(offset)||0);
     source.start(0,loop?at%buffer.duration:Math.min(at,buffer.duration));
@@ -47,10 +50,10 @@ const ScrollSound=(()=>{
     const duration=Math.min(.10,buffer.duration),offset=Math.max(0,Math.min(buffer.duration-duration,backwards?buffer.duration-time:time));
     const source=context.createBufferSource(),gain=context.createGain();source.buffer=buffer;
     gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.8,now+.008);gain.gain.setValueAtTime(.8,now+duration-.018);gain.gain.linearRampToValueAtTime(0,now+duration);
-    source.connect(gain);gain.connect(context.destination);voices.add(source);
+    source.connect(gain);gain.connect(out());voices.add(source);
     source.onended=()=>{voices.delete(source);source.disconnect();gain.disconnect();};
     source.start(now,offset,duration);
   }
   if(typeof fetch==='function')prepare();
-  return {addClip,begin,cue,has,loop,scrub,stop};
+  return {addClip,begin,cue,has,loop,scrub,stop,setVolume};
 })();

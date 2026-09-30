@@ -102,3 +102,14 @@
   - 형식: 48kHz 스테레오 WAV(`app/assets/oap/grade/congrats-sound.wav`). 앱은 이 파일을 Web Audio로 재생한다.
   - `congrats-A.mp4`, `congrats-B.mp4`에도 같은 소리를 AAC로 넣었다(영상 자체는 v22와 같음).
 - 이전 합성 축하음: `resource/oap/ae-work/render/congrats/congrats-sound-v22-synth.wav`
+
+## v24 변경: 축하 화면 직전 제라툴 소환 영상 노출 수정
+
+- 증상: A·B 축하 화면이 나오기 직전에 제라툴 소환 영상(연출 영상 칸의 기본 소스 `zeratu-summon.mp4`, 포스터 `zeratu-summon.jpg`)이 잠깐 보였다.
+- 원인: 흰 화면이 축하 영상 첫 장면이 준비되기 전에 걷혔다. 그 사이 영상 칸에는 이전 소스의 장면이나 포스터가 남아 있었다.
+- 수정:
+  - 연출 영상을 바꿀 때 `loading` 상태로 영상 칸을 가리고 포스터를 뗀다.
+  - 새 영상의 첫 장면이 화면에 오르면(`requestVideoFrameCallback`, 없으면 `playing`) 가림을 푼다.
+  - 흰 화면도 이때 걷는다. 영상이 멈춘 경우에는 최대 1.5초만 기다린다.
+  - 축하 → 특별 영상처럼 이어질 때는 앞 영상의 마지막 장면을 캔버스(`#summon-hold`)에 붙잡아 두어 빈 화면이 없다.
+  - 결과 화면으로 넘어가며 기본 소스로 되돌릴 때 포스터도 되돌린다.
