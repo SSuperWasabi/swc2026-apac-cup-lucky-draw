@@ -79,6 +79,25 @@ function wav(freq,seconds,rate=8000){
   await page.waitForFunction(()=>!bgmEl.list.paused,null,{timeout:3000});
   console.log('PASS: admin shows the playlist; ▲▼ reorders and saves; 삭제 removes the playing track and moves on');
 
+  // 여러 파일 한 번에: 곡 3개(고른 순서와 무관하게 파일 이름순), 대기 영상 2개.
+  const tmpDir=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'multi-'));
+  const picks=['track10.wav','track2.wav','track1.wav'].map((n,i)=>{const p=path.join(tmpDir,n);fs.writeFileSync(p,Buffer.from(wav(300+i*100,.6),'base64'));return p;});
+  await page.evaluate(()=>{openAdmin();pinBuf=String(cfg.adminPin);checkPin();admTab('settings');});
+  const listBefore=await page.evaluate(()=>bgmTracks().length);
+  let [chooser]=await Promise.all([page.waitForEvent('filechooser'),page.locator('#bgm-track-add').click()]);
+  assert.equal(chooser.isMultiple(),true,'곡 추가는 여러 파일 선택');await chooser.setFiles(picks);
+  await page.waitForFunction(n=>bgmTracks().length===n+3&&bgmList.urls.size===n+3,listBefore,{timeout:8000});
+  const names=await page.evaluate(()=>bgmTracks().slice(-3).map(t=>t.name));
+  assert.deepEqual(names,['track1.wav','track2.wav','track10.wav'],'목록 끝에 파일 이름순(숫자 크기순)으로 추가');
+  const idleBefore=await page.evaluate(()=>(cfg.idleVideos||[]).length);
+  [chooser]=await Promise.all([page.waitForEvent('filechooser'),page.locator('button[onclick="addIdleVideo()"]').click()]);
+  assert.equal(chooser.isMultiple(),true,'대기 영상 추가는 여러 파일 선택');
+  await chooser.setFiles([path.resolve('app/assets/oap/grade/congrats-B.mp4'),path.resolve('app/assets/oap/grade/congrats-A.mp4')]);
+  await page.waitForFunction(n=>(cfg.idleVideos||[]).length===n+2,idleBefore,{timeout:8000});
+  const stored=await page.evaluate(async()=>{const ids=cfg.idleVideos.slice(-2).map(v=>v.id);const r=[];for(const id of ids){const d=await idbGet('idlevid_'+id);r.push(!!(d&&d.buf&&d.buf.byteLength>1000));}return r;});
+  assert.deepEqual(stored,[true,true],'대기 영상 2개 저장');
+  console.log('PASS: 관리자 여러 파일 한 번에: 곡 3개를 이름순으로 목록 끝에 추가, 대기 영상 2개 추가');
+
   // 4) Other modes are unchanged: 화면별 전환 stops the playlist and plays the screen slot.
   await page.evaluate(()=>{document.getElementById('bgm-mode').value='screen';saveBgmMode();});
   assert.deepEqual(await page.evaluate(()=>({cur:curBgm,listPaused:bgmEl.list.paused,mode:cfg.bgmMode})),{cur:'idle',listPaused:true,mode:'screen'});

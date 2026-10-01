@@ -557,7 +557,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v26';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v27';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1165,6 +1165,8 @@ function admDelIp(i){ if(cfg.ips.length<=1){toast('최소 1개 IP가 필요합�
 /* 이미지 업로드 */
 function pickFile(accept){ return new Promise(res=>{ const inp=document.createElement('input'); inp.type='file'; /* iOS 파일앱은 accept="audio/*"로 mp3/wav를 회색 비활성화함 → 오디오는 필터 제거(전체 선택 가능) */ if(accept && !/audio/.test(accept)) inp.accept=accept; /* iOS 안정: input을 DOM에 붙여 클릭(분리된 input은 파일피커가 멈추는 경우 있음) */ inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0'; let done=false; const finish=(f)=>{ if(done)return; done=true; res(f); setTimeout(()=>{try{inp.remove();}catch(e){}},0); }; inp.onchange=()=>finish(inp.files[0]||null); document.body.appendChild(inp); inp.click(); }); }
 function fileToDataURL(f){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>res(null); r.readAsDataURL(f); }); }
+/* 여러 파일 선택: 파일 이름순(숫자는 크기순)으로 돌려준다. 고른 순서는 기기마다 달라 이름순으로 고정한다. */
+function pickFiles(accept){ return new Promise(res=>{ const inp=document.createElement('input'); inp.type='file'; inp.multiple=true; if(accept && !/audio/.test(accept)) inp.accept=accept; inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0'; let done=false; const finish=(fs)=>{ if(done)return; done=true; res(fs); setTimeout(()=>{try{inp.remove();}catch(e){}},0); }; inp.onchange=()=>finish([...(inp.files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}))); document.body.appendChild(inp); inp.click(); }); }
 async function uploadImg(key){ const f=await pickFile('image/*'); if(!f)return null; if(f.size>1.5*1024*1024){ toast('이미지는 1.5MB 이하 권장'); } const d=await fileToDataURL(f); if(!d)return null; await idbPut(key,d); imgCache[key]=d; return key; }
 async function admPickImg(i,pi){ const key='img_'+cfg.ips[i].id+'_p'+pi+'_'+Date.now(); const k=await uploadImg(key); if(k){ cfg.ips[i].prizes[pi].imageKey=k; toast('이미지 적용됨 (저장 잊지 마세요)'); renderAdmIps(); } }
 async function admPickHero(i){ const key='img_'+cfg.ips[i].id+'_hero_'+Date.now(); const k=await uploadImg(key); if(k){ cfg.ips[i].heroImageKey=k; renderAdmIps(); } }
@@ -1437,7 +1439,7 @@ function renderAdmSettings(){
   </div>
   <div class="adm-card"><h4>대기 영상 (전체 1회씩 무작위 순환)</h4>
     ${idleVidRows}
-    <div class="adm-row" style="margin-top:8px"><button class="adm-btn sec" onclick="addIdleVideo()">+ 영상 추가</button></div>
+    <div class="adm-row" style="margin-top:8px"><button class="adm-btn sec" onclick="addIdleVideo()">+ 영상 추가 (여러 개 선택 가능)</button></div>
     <div class="muted-note">대기 중에는 영상이 끝날 때마다 다음 영상으로 넘어감 · 목록 전체를 무작위 순서로 한 번씩 재생한 뒤 다시 섞음(직전과 다른 영상부터) · 세로 MP4 무음 · 최대 150MB</div>
   </div>
   <div class="adm-card"><h4>뽑기 NPC (여러 개 = 랜덤 표시)</h4>
@@ -1542,14 +1544,19 @@ async function delNpc(id){ await idbDel('npc_'+id); cfg.npcs=(cfg.npcs||[]).filt
 
 /* 대기영상 (여러 개 → 대기화면 진입마다 랜덤, 직전 제외) */
 async function addIdleVideo(){
-  const f=await pickFile('video/*'); if(!f)return;
-  if(f.size>150*1024*1024){ toast('150MB 이하만 가능'); return; }
-  const id='iv'+Date.now()+Math.floor(Math.random()*1000);
-  const buf=await fileToArrayBuffer(f); if(!buf){ toast('파일 읽기 실패'); return; }
-  if(!await idbPut('idlevid_'+id, {buf, type:f.type||'video/mp4'})){ toast('저장 실패 — 용량/브라우저 제한'); return; }
+  const files=await pickFiles('video/*'); if(!files.length)return;
   if(!Array.isArray(cfg.idleVideos)) cfg.idleVideos=[];
-  cfg.idleVideos.push({id}); saveCfg();
-  toast('대기영상 추가됨'); renderAdmSettings();
+  let added=0; const skipped=[];
+  // 여러 개를 고르면 한 개씩 읽어 저장한다(큰 영상을 한꺼번에 메모리에 올리지 않음).
+  for(const [n,f] of files.entries()){
+    if(files.length>1) toast(`대기영상 저장 중… ${n+1}/${files.length}`);
+    if(f.size>150*1024*1024){ skipped.push(f.name+'(150MB 초과)'); continue; }
+    const id='iv'+Date.now()+Math.floor(Math.random()*1000)+'_'+n;
+    const buf=await fileToArrayBuffer(f); if(!buf){ skipped.push(f.name+'(읽기 실패)'); continue; }
+    if(!await idbPut('idlevid_'+id, {buf, type:f.type||'video/mp4'})){ skipped.push(f.name+'(저장 실패 — 용량/브라우저 제한)'); break; }
+    cfg.idleVideos.push({id}); saveCfg(); added++;
+  }
+  toast(skipped.length?`대기영상 ${added}개 추가 · 제외: ${skipped.join(', ')}`:`대기영상 ${added}개 추가됨`); renderAdmSettings();
 }
 async function delIdleVideo(id){ await idbDel('idlevid_'+id); cfg.idleVideos=(cfg.idleVideos||[]).filter(x=>x.id!==id); saveCfg(); toast('삭제됨'); renderAdmSettings(); }
 
