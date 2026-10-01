@@ -259,3 +259,5 @@
 #summon-stage.congrats #congrats-video{display:block}
 /* 축하 화면이 덮고 있는 동안에는 밑의 흐림 배경(전체 화면 블러)을 그리지 않는다(v28, iPad 첫 재생 버벅임). */
 #summon-stage.congrats #summon-veil,#summon-stage.congrats #summon-video-blur{visibility:hidden}
+/* 최근 효과음 기록(v29) */
+.sound-log{margin-top:8px;font-size:13px}.sound-log summary{cursor:pointer;font-weight:700}.sound-log ol{margin:6px 0 0;padding-left:20px;display:grid;gap:2px;font-variant-numeric:tabular-nums}

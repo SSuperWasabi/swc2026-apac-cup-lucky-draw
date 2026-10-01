@@ -77,13 +77,21 @@ syncBgmGain=function(a){
   if(gain){a.volume=1;gain.gain.cancelScheduledValues(c.currentTime);gain.gain.setValueAtTime(level,c.currentTime);}
   else a.volume=Math.min(1,level); // Non-WebAudio fallback only.
 };
+// 효과음 기록(최근 12개): 관리자 → 설정 → 효과음 카드에서 본다. iPad에서 소리가 안 날 때 원인을 가린다.
+const soundLog=[];
+const SFX_NAMES={pick:'뽑기음',win:'일반당첨',fanfare:'스페셜',participation:'참가상'};
+function logSound(kind,how){const c=audioCtx();soundLog.push({at:new Date().toTimeString().slice(0,8),kind,how,state:c?c.state:'없음',screen:currentScreen});if(soundLog.length>12)soundLog.shift();const el=document.getElementById('sound-log');if(el)el.innerHTML=soundLogHtml();}
+const soundLogHtml=()=>soundLog.length?soundLog.slice().reverse().map(e=>`<li>${e.at} · ${SFX_NAMES[e.kind]||e.kind} · ${e.how} · 오디오 ${e.state}</li>`).join(''):'<li>아직 기록 없음</li>';
+const basePlaySfx=playSfx;
+playSfx=function(kind){const c=audioCtx();if(cfg.muted)logSound(kind,'음소거라 재생 안 함');else if(c&&c.state!=='running'){logSound(kind,'오디오 재개 대기');setTimeout(()=>{if(c.state!=='running')logSound(kind,'오디오가 재개되지 않아 재생 못 함');},800);}return basePlaySfx(kind);};
 playSfxReady=function(kind,c){
   if(cfg.muted)return;
   const slot={pick:'pick',win:'win',fanfare:'special',participation:'participation'}[kind],vol=soundVolume('sfx_all')*(slot?soundVolume('sfx_'+slot):1);
   const buf=slot&&sfxBuf[slot];
-  if(buf&&c){try{const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=.8*vol;src.connect(g);g.connect(c.destination);src.start();return;}catch(e){}}
+  if(buf&&c){try{const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=.8*vol;src.connect(g);g.connect(c.destination);src.start();logSound(kind,`올린 소리 재생(볼륨 ${Math.round(vol*100)}%)`);return;}catch(e){logSound(kind,'올린 소리 재생 실패: '+e.message);}}
   const a=slot&&sfxEl[slot];
-  if(a&&a.src){try{a.pause();a.currentTime=0;a.volume=Math.min(1,.8*vol);const p=a.play();if(p&&p.catch)p.catch(()=>{});return;}catch(e){}}
+  if(a&&a.src){try{a.pause();a.currentTime=0;a.volume=Math.min(1,.8*vol);const p=a.play();if(p&&p.catch)p.catch(e=>logSound(kind,'파일 재생 거부: '+e.name));logSound(kind,'파일 직접 재생(iPad에서는 막힐 수 있음)');return;}catch(e){}}
+  logSound(kind,`기본음 재생(볼륨 ${Math.round(vol*100)}%)`);
   // Built-in tones when nothing is uploaded.
   const t=(f,d,type,v,delay)=>tone(f,d,type,v*vol,delay);
   if(kind==='pick'){t(660,.12,'triangle',.18);}
@@ -118,7 +126,9 @@ function scrollMix(active){
   setBgmDucked(active);
 }
 function scrollWhiteout(value,fade=false){const el=document.getElementById('scroll-whiteout');el.style.transition=fade?'opacity 400ms ease-out':'none';el.style.opacity=String(Math.max(0,Math.min(1,value)));}
-function updateScrollWhiteout(time){const duration=scrollVideo().duration;if(Number.isFinite(duration))scrollWhiteout((time-(duration-.3))/.3);}
+// 개봉이 끝나 흰 화면이 덮인 뒤에는(revealWhiteHold) 늦게 도착한 드래그 위치 갱신이 흰 화면을 낮추지 못하게 한다.
+let revealWhiteHold=false;
+function updateScrollWhiteout(time){if(revealWhiteHold)return;const duration=scrollVideo().duration;if(Number.isFinite(duration))scrollWhiteout((time-(duration-.3))/.3);}
 let scrollSeekReady=false,figureObjectUrls=[],scrollPlaybackFailed=false;
 const AUTO_OPEN_RATE=1.8;
 let openingAudioActive=false,openingNativeAudio=false;
@@ -186,18 +196,22 @@ function primeCongrats(result){
   const c=congratsVideo();c.dataset.grade=clip.grade;
   if(c.getAttribute('src')!==clip.src){c.src=clip.src;c.load();}
 }
-// 흰 화면 아래에서 소리 없이 0.1초쯤 재생했다가 처음으로 되돌려 디코더를 깨운다(iPad 첫 재생 버벅임 방지, 최대 0.7초).
-let congratsPreroll=false;
-function prerollCongrats(c){
+// 흰 화면이 덮고 있는 동안 축하 영상을 첫 장면에 멈춘 채로 끝까지 불러 둔다(재생하지 않음, 최대 0.8초).
+function readyCongrats(c){
   return new Promise(resolve=>{
     let done=false,backstop=0;
-    const finish=()=>{if(done)return;done=true;clearTimeout(backstop);congratsPreroll=false;resolve();};
-    backstop=setTimeout(()=>{try{c.pause();c.currentTime=0;}catch{}finish();},700);
-    congratsPreroll=true;c.muted=true;try{c.currentTime=0;}catch{}
-    const rewind=()=>{try{c.pause();}catch{}c.addEventListener('seeked',finish,{once:true});try{c.currentTime=0;}catch{finish();}};
-    const watch=()=>{if(done)return;if(c.currentTime>=.1)rewind();else if(typeof c.requestVideoFrameCallback==='function')c.requestVideoFrameCallback(watch);else requestAnimationFrame(watch);};
-    c.play().then(watch).catch(finish);
+    const check=()=>{if(c.readyState>=4)finish();};
+    const finish=()=>{if(done)return;done=true;clearTimeout(backstop);c.removeEventListener('canplaythrough',check);resolve();};
+    backstop=setTimeout(finish,800);
+    c.addEventListener('canplaythrough',check);
+    try{c.pause();if(c.currentTime!==0)c.currentTime=0;}catch{}
+    check();
   });
+}
+// 화면에 n장째 장면이 올라온 뒤 fn을 부른다(디코더가 자리 잡은 뒤에 흰 화면을 걷기 위함).
+function afterFrames(v,n,fn){
+  if(typeof v.requestVideoFrameCallback!=='function'){v.addEventListener('playing',()=>setTimeout(fn,n*33),{once:true});return;}
+  let k=0;const tick=()=>{if(++k>=n)fn();else v.requestVideoFrameCallback(tick);};v.requestVideoFrameCallback(tick);
 }
 function playCongrats(epoch,clip,onShown){
   const c=congratsVideo(),stage=summonStage();summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
@@ -207,10 +221,11 @@ function playCongrats(epoch,clip,onShown){
   // 축하음은 Web Audio로 그림 위치에 맞춰 낸다(iPad 제스처 밖 재생). 디코딩에 실패했으면 영상 자체 소리를 쓴다.
   congratsCue=congratsCueOf(clip.grade);c.volume=Math.min(1,sceneVolume()*soundVolume('sfx_congrats_'+clip.grade));
   summonTimer=setTimeout(()=>congratsDone(epoch,token),6000);
-  prerollCongrats(c).then(()=>{
+  c.muted=congratsCue?true:!!cfg.muted;
+  readyCongrats(c).then(()=>{
     if(token!==summonLoadToken||!stage.classList.contains('congrats'))return;
-    c.muted=congratsCue?true:!!cfg.muted;
-    summonFirstFrame(c,()=>{if(token===summonLoadToken&&onShown)onShown();});
+    // 처음부터 한 번만 재생한다. 흰 화면은 3장째 장면이 화면에 오른 뒤 걷는다(시작 순간의 끊김을 흰 화면이 가림).
+    afterFrames(c,3,()=>{if(token===summonLoadToken&&onShown)onShown();});
     c.play().catch(()=>{if(c.muted)return congratsDone(epoch,token);c.muted=true;c.play().catch(()=>congratsDone(epoch,token));});
     // 특별 영상 준비는 축하 화면이 0.6초 재생된 뒤에 시작한다(시작 순간 디코더가 겹치지 않게). 남은 1.2초면 준비된다.
     if(summonQueue.length)setTimeout(()=>{if(token===summonLoadToken&&summonQueue.length&&stage.classList.contains('congrats'))preloadSummonClip(summonQueue[0]);},600);
@@ -232,7 +247,7 @@ function preloadSummonClip(item){
   v.play().then(()=>{if(summonWarm){v.pause();try{v.currentTime=0;}catch{}}}).catch(()=>{}).finally(()=>{summonWarm=false;});
 }
 const congratsEl=congratsVideo();
-congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsCue&&!congratsPreroll)ScrollSound.cue(congratsCue.name,congratsEl.currentTime,!!cfg.muted,false,1,congratsCue.gain);});
+congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsCue)ScrollSound.cue(congratsCue.name,congratsEl.currentTime,!!cfg.muted,false,1,congratsCue.gain);});
 congratsEl.addEventListener('ended',()=>congratsDone(summonEpoch,summonLoadToken));
 congratsEl.addEventListener('error',()=>{if(congratsEl.getAttribute('src'))congratsDone(summonEpoch,summonLoadToken);});
 // 새 소스의 첫 장면이 실제로 화면에 올라온 뒤에 fn을 부른다.
@@ -321,7 +336,7 @@ function startScrollLoop(){
   openingAudioActive=false;
   cancelScrollWait();
   scrollPrimeEpoch++;scrollPrimeTask=null;
-  ScrollSound.stop();scrollMix(currentScreen==='scr-open');scrollWhiteout(0);
+  ScrollSound.stop();scrollMix(currentScreen==='scr-open');revealWhiteHold=false;scrollWhiteout(0);
   scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();setScrollProgress(0);
   document.getElementById('scroll-drag').classList.remove('scrubbing');
   // The idle loop keeps the clip's own sound (frames 0-100 of the source), following the admin mute switch.
@@ -368,7 +383,7 @@ scrollVideo().addEventListener('seeked',scrollMediaReady);
 // Shared ending for both paths: fully white, result screen underneath, then the white lifts.
 function finishScrollReveal(){
   openingAudioActive=false;
-  ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();scrollWhiteout(1);clearTimeout(openingTimer);
+  ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();revealWhiteHold=true;scrollWhiteout(1);clearTimeout(openingTimer);
   const epoch=figureEpoch,result=lastResult;
   const reveal=()=>{
     if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
@@ -763,7 +778,7 @@ renderAdmSettings = function(){
   const sfxHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('효과음'));
   if(sfxHead){sfxHead.insertAdjacentHTML('afterend',volumeRow('sfx_all','효과음 전체'));
     const last=sfxHead.parentElement.querySelector('.muted-note');
-    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">A·B 축하 = A·B 등급 축하 화면(1.8초) 소리. 올리지 않으면 기본 LEVELUP 소리이며, 1.8초보다 길면 다음 화면으로 넘어갈 때 짧게 줄어들며 끝납니다. 연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하음. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>');}
+    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">A·B 축하 = A·B 등급 축하 화면(1.8초) 소리. 올리지 않으면 기본 LEVELUP 소리이며, 1.8초보다 길면 다음 화면으로 넘어갈 때 짧게 줄어들며 끝납니다. 연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하음. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>'+`<details class="sound-log"><summary>최근 효과음 기록(소리가 안 날 때 확인)</summary><ol id="sound-log">${soundLogHtml()}</ol></details>`);}
   const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
 }
 function saveScreenTransitions(){
