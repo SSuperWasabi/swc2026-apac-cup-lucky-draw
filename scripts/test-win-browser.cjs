@@ -185,7 +185,8 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   await start({grade:'A',kind:'figure',specialVideoKey:'test_special',winVideoKey:'test_win'});
   // 매 프레임 화면에 보이는 것을 기록한다: 흰 화면, 축하 화면, 특별 영상, 제라툴 기본 영상(보이면 안 됨).
   await page.evaluate(()=>{window.__seen=[];window.__leak=[];window.__liftAt=null;window.__switch=null;
-    const oc=ScrollSound.cue;window.__cues=[];ScrollSound.cue=function(n,...x){if(window.__cues.at(-1)!==n)window.__cues.push(n);return oc.call(this,n,...x);};
+    const oc=ScrollSound.cue;window.__cues=[];window.__cueLog=[];ScrollSound.cue=function(n,...x){window.__cueLog.push([n,x[0]]);if(window.__cues.at(-1)!==n)window.__cues.push(n);return oc.call(this,n,...x);};
+    window.__preloadAt=null;new MutationObserver(()=>{const sv=document.getElementById('summon-video');if(window.__preloadAt===null&&(sv.getAttribute('src')||'').startsWith('blob:'))window.__preloadAt=document.getElementById('congrats-video').currentTime;}).observe(document.getElementById('summon-video'),{attributes:true,attributeFilter:['src']});
     const w=document.getElementById('scroll-whiteout'),st=document.getElementById('summon-stage'),v=document.getElementById('summon-video'),c=document.getElementById('congrats-video');
     c.addEventListener('ended',()=>{window.__switch={ended:performance.now()};},{once:true});
     const tick=()=>{if(currentScreen==='scr-result')return;
@@ -198,18 +199,21 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
       requestAnimationFrame(tick);};requestAnimationFrame(tick);});
   await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
   await page.waitForFunction(()=>document.getElementById('summon-stage').classList.contains('congrats'),null,{timeout:15000});
-  const first=await page.evaluate(()=>({grade:document.getElementById('congrats-video').dataset.grade,blob:document.getElementById('congrats-video').currentSrc.startsWith('blob:'),decoded:ScrollSound.has('congrats'),queued:summonQueue.length,preload:document.getElementById('summon-video').getAttribute('src').startsWith('blob:')}));
-  assert.deepEqual(first,{grade:'A',blob:true,decoded:true,queued:1,preload:true},'A 등급은 축하 화면(메모리에 받아 둔 영상, 축하음 디코딩)부터, 그동안 특별 영상을 밑에서 준비');
+  const first=await page.evaluate(()=>({grade:document.getElementById('congrats-video').dataset.grade,blob:document.getElementById('congrats-video').currentSrc.startsWith('blob:'),decoded:ScrollSound.has('congrats'),queued:summonQueue.length,preload:summonDefaultSrc!==null}));
+  assert.deepEqual(first,{grade:'A',blob:true,decoded:true,queued:1,preload:false},'A 등급은 축하 화면(메모리에 받아 둔 영상, 축하음 디코딩)부터, 특별 영상 준비는 아직');
   await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:20000});
   const cg=await page.evaluate(()=>({seen:window.__seen,leak:window.__leak,liftAt:window.__liftAt,sw:window.__switch,dur:document.getElementById('congrats-video').duration}));
   assert.deepEqual(cg.seen.slice(0,2),['축하','특별'],'보이는 순서: 축하 화면 -> 특별 영상(사이에 빈 화면 없음)');
   assert.deepEqual(cg.leak,[],'축하 영상 전·영상 사이에 제라툴 소환 영상이나 빈 칸이 보이지 않음');
   assert.deepEqual(await page.evaluate(()=>window.__cues.filter(n=>n==='congrats'||n.startsWith('special:'))),['congrats','special:test_special'],'소리: 축하음 -> 특별 영상 소리(미리 준비 중에는 소리 없음)');
+  const cl=await page.evaluate(()=>({congrats:window.__cueLog.filter(([n])=>n==='congrats'),preloadAt:window.__preloadAt}));
+  assert.equal(cl.congrats.length,1,'축하음은 한 번만(예열 재생 중에는 소리 없음)');assert.ok(cl.congrats[0][1]<.06,`축하음은 처음부터(위치 ${cl.congrats[0][1]}초)`);
+  assert.ok(cl.preloadAt>=.4,`특별 영상 준비는 축하 화면 ${cl.preloadAt}초 이후(시작 순간 겹치지 않음)`);
   assert.equal(cg.liftAt,'축하','흰 화면은 축하 영상 첫 장면이 나온 뒤에 걷힘');
   assert.ok(cg.dur>=1.75&&cg.dur<=1.85,`축하 화면 길이 ${cg.dur}초`);
   const gap=cg.sw.shown-cg.sw.ended;
   assert.ok(gap<200,`축하 화면이 끝나고 특별 영상으로 바뀌기까지 ${gap.toFixed(0)}ms`);
-  console.log('PASS: 축하 화면 %s초 -> 특별 영상: 흰 화면은 축하 첫 장면 뒤에 걷히고, 제라툴·빈 칸 없이 %sms 만에 이어짐',cg.dur.toFixed(2),gap.toFixed(0));
+  console.log('PASS: 축하 화면 %s초 -> 특별 영상: 흰 화면 아래 예열 후 처음부터 재생(축하음 1회), 특별 영상 준비는 %s초부터, 제라툴·빈 칸 없이 %sms 만에 이어짐',cg.dur.toFixed(2),cl.preloadAt.toFixed(2),gap.toFixed(0));
   await page.waitForFunction(()=>document.getElementById('win-grade').classList.contains('is-in'),null,{timeout:5000});
   const badge=await page.evaluate(()=>{const b=document.getElementById('win-grade');return {grade:b.dataset.grade,t:winScreen.video.currentTime,hidden:b.hidden,bg:getComputedStyle(b).backgroundImage.includes('grade-A.png')};});
   assert.equal(badge.grade,'A');assert.equal(badge.hidden,false);assert.equal(badge.bg,true);assert.ok(badge.t>=1.35&&badge.t<2.2,`배지가 상품 등장 시점에 나타남(영상 ${badge.t}초)`);

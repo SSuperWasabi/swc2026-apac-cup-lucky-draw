@@ -257,3 +257,5 @@
    축하 화면이 끝나면 마지막 장면을 그대로 둔 채 특별 영상을 시작하고, 특별 영상 첫 장면이 오르면 걷는다. */
 #congrats-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none;display:none;z-index:3}
 #summon-stage.congrats #congrats-video{display:block}
+/* 축하 화면이 덮고 있는 동안에는 밑의 흐림 배경(전체 화면 블러)을 그리지 않는다(v28, iPad 첫 재생 버벅임). */
+#summon-stage.congrats #summon-veil,#summon-stage.congrats #summon-video-blur{visibility:hidden}

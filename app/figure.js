@@ -180,18 +180,41 @@ function playSummon(epoch,task,congrats,onShown){
 // 첫 장면까지 준비해 두어, 축하 화면이 끝나는 순간 끊김 없이 이어진다.
 const congratsVideo=()=>document.getElementById('congrats-video');
 function hideCongrats(){const c=congratsVideo();summonStage().classList.remove('congrats');try{c.pause();}catch{}}
+// 추첨이 확정되는 순간(소환서 개봉 중) A·B 축하 영상을 미리 불러 둔다.
+function primeCongrats(result){
+  const clip=result&&congratsClipOf(result);if(!clip)return;
+  const c=congratsVideo();c.dataset.grade=clip.grade;
+  if(c.getAttribute('src')!==clip.src){c.src=clip.src;c.load();}
+}
+// 흰 화면 아래에서 소리 없이 0.1초쯤 재생했다가 처음으로 되돌려 디코더를 깨운다(iPad 첫 재생 버벅임 방지, 최대 0.7초).
+let congratsPreroll=false;
+function prerollCongrats(c){
+  return new Promise(resolve=>{
+    let done=false,backstop=0;
+    const finish=()=>{if(done)return;done=true;clearTimeout(backstop);congratsPreroll=false;resolve();};
+    backstop=setTimeout(()=>{try{c.pause();c.currentTime=0;}catch{}finish();},700);
+    congratsPreroll=true;c.muted=true;try{c.currentTime=0;}catch{}
+    const rewind=()=>{try{c.pause();}catch{}c.addEventListener('seeked',finish,{once:true});try{c.currentTime=0;}catch{finish();}};
+    const watch=()=>{if(done)return;if(c.currentTime>=.1)rewind();else if(typeof c.requestVideoFrameCallback==='function')c.requestVideoFrameCallback(watch);else requestAnimationFrame(watch);};
+    c.play().then(watch).catch(finish);
+  });
+}
 function playCongrats(epoch,clip,onShown){
   const c=congratsVideo(),stage=summonStage();summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();
   const token=++summonLoadToken;
-  if(summonQueue.length)preloadSummonClip(summonQueue[0]);
   stage.classList.remove('fading','loading');stage.classList.add('active','congrats');
   c.dataset.grade=clip.grade;if(c.getAttribute('src')!==clip.src){c.src=clip.src;c.load();}
   // 축하음은 Web Audio로 그림 위치에 맞춰 낸다(iPad 제스처 밖 재생). 디코딩에 실패했으면 영상 자체 소리를 쓴다.
-  congratsCue=congratsCueOf(clip.grade);
-  c.muted=congratsCue?true:!!cfg.muted;c.volume=Math.min(1,sceneVolume()*soundVolume('sfx_congrats_'+clip.grade));try{c.currentTime=0;}catch{}
-  summonFirstFrame(c,()=>{if(token===summonLoadToken&&onShown)onShown();});
-  c.play().catch(()=>{if(c.muted)return congratsDone(epoch,token);c.muted=true;c.play().catch(()=>congratsDone(epoch,token));});
+  congratsCue=congratsCueOf(clip.grade);c.volume=Math.min(1,sceneVolume()*soundVolume('sfx_congrats_'+clip.grade));
   summonTimer=setTimeout(()=>congratsDone(epoch,token),6000);
+  prerollCongrats(c).then(()=>{
+    if(token!==summonLoadToken||!stage.classList.contains('congrats'))return;
+    c.muted=congratsCue?true:!!cfg.muted;
+    summonFirstFrame(c,()=>{if(token===summonLoadToken&&onShown)onShown();});
+    c.play().catch(()=>{if(c.muted)return congratsDone(epoch,token);c.muted=true;c.play().catch(()=>congratsDone(epoch,token));});
+    // 특별 영상 준비는 축하 화면이 0.6초 재생된 뒤에 시작한다(시작 순간 디코더가 겹치지 않게). 남은 1.2초면 준비된다.
+    if(summonQueue.length)setTimeout(()=>{if(token===summonLoadToken&&summonQueue.length&&stage.classList.contains('congrats'))preloadSummonClip(summonQueue[0]);},600);
+  });
 }
 function congratsDone(epoch,token){
   if(token!==summonLoadToken||epoch!==summonEpoch||!summonStage().classList.contains('congrats'))return;
@@ -209,7 +232,7 @@ function preloadSummonClip(item){
   v.play().then(()=>{if(summonWarm){v.pause();try{v.currentTime=0;}catch{}}}).catch(()=>{}).finally(()=>{summonWarm=false;});
 }
 const congratsEl=congratsVideo();
-congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsCue)ScrollSound.cue(congratsCue.name,congratsEl.currentTime,!!cfg.muted,false,1,congratsCue.gain);});
+congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsCue&&!congratsPreroll)ScrollSound.cue(congratsCue.name,congratsEl.currentTime,!!cfg.muted,false,1,congratsCue.gain);});
 congratsEl.addEventListener('ended',()=>congratsDone(summonEpoch,summonLoadToken));
 congratsEl.addEventListener('error',()=>{if(congratsEl.getAttribute('src'))congratsDone(summonEpoch,summonLoadToken);});
 // 새 소스의 첫 장면이 실제로 화면에 올라온 뒤에 fn을 부른다.
@@ -514,7 +537,7 @@ function commitFigureDraw(){
 function commitScrollDraw(){
   try{commitFigureDraw();}catch(error){setScrollProgress(0);startScrollLoop();toast('추첨을 진행하지 못했습니다: '+error.message);return false;}
   drawing=true;clearTimeout(idleTimer);document.getElementById('open-back').disabled=true;
-  if(lastResult)prepareWinMedia(lastResult,figureEpoch);
+  if(lastResult){prepareWinMedia(lastResult,figureEpoch);primeCongrats(lastResult);}
   document.getElementById('scr-open').classList.add('opening');return true;
 }
 // Automatic open (button / keyboard): play the whole clip and finish on `ended`.
