@@ -169,7 +169,7 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
    let gainSet=null;const c=audioCtx(),orig=c.createGain.bind(c);c.createGain=()=>{const g=orig();gainSet=g;return g;};
    sfxBuf.win=c.createBuffer(1,800,8000);cfg.muted=false;playSfxReady('win',c);c.createGain=orig;cfg.muted=true;delete sfxBuf.win;
    return {rows,saved:JSON.parse(localStorage.getItem('swc2026-apac-lucky-draw.config.v1')).soundVolumes,bgmGain:+bgmGains.get(a).gain.value.toFixed(3),sfxGain:+gainSet.gain.value.toFixed(3),out:document.querySelector('.vol-row[data-key=bgm_idle] output').textContent};});
-  assert.deepEqual(vol.rows,['bgm_all','bgm_idle','bgm_select','bgm_play','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene']);
+  assert.deepEqual(vol.rows,['bgm_all','bgm_idle','bgm_select','bgm_play','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene','sfx_touch']);
   assert.deepEqual(vol.saved,{bgm_idle:50,sfx_win:150});assert.equal(vol.bgmGain,.2);assert.equal(vol.sfxGain,1.2);assert.equal(vol.out,'50%');
   console.log('PASS: volume sliders for every BGM slot and effect sound; saved and applied (BGM 50% -> gain .2, 일반당첨 150% -> gain 1.2)');
 

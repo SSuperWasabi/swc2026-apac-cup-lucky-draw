@@ -65,13 +65,16 @@ assert.deepEqual(arrow.cueAnimations,new Array(10).fill(1));
   await page.evaluate(()=>resetToIdle());
   await page.locator('#idle-banner').click();await page.locator('.scroll-choice').first().click();await page.locator('#scroll-next').click();
   const box=await page.locator('#scroll-drag').boundingBox();
+  await page.evaluate(()=>{cfg.muted=false;touchSfxAt=-1e9;});
   await page.mouse.move(box.x+20,box.y+box.height/2);await page.mouse.down();
+  assert.equal(await page.evaluate(()=>ScrollSound.fxActive('touch')),true,'소환서를 누르는 순간 터치음');
   await page.mouse.move(box.x+box.width*.5,box.y+box.height/2,{steps:8});
   try{await page.waitForFunction(()=>scrollVideo().currentTime>1&&!scrollVideo().seeking,null,{timeout:10000});}
   catch(error){console.log(await page.evaluate(()=>({scrubbing:scrollScrubbing,ready:scrollVideo().readyState,time:scrollVideo().currentTime,seeking:scrollVideo().seeking,target:scrollSeekTarget,progress:document.getElementById('scroll-drag').style.getPropertyValue('--progress'),events:scrollMediaDiagnostics.slice(-12)})));throw error;}
   await page.mouse.move(box.x+20,box.y+box.height/2,{steps:8});await page.mouse.up();
   assert.equal(await page.evaluate(()=>logArr.length),1);
-  console.log('PASS: actual video seeks during drag; reversed/cancelled drag does not draw');
+  assert.equal(await page.evaluate(()=>ScrollSound.fxActive('touch')),false,'끝까지 열지 않고 떼면 터치음이 줄어듦');
+  console.log('PASS: actual video seeks during drag; reversed/cancelled drag does not draw; 누르는 순간 터치음, 떼면 줄어듦');
   const measured=await page.evaluate(async()=>{
     const c=audioCtx();await c.resume();cfg.muted=false;cfg.bgmMode='single';cfg.bgmSingleSlot='idle';
     const samples=44100,bytes=new ArrayBuffer(44+samples*2),d=new DataView(bytes);

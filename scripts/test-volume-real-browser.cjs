@@ -28,10 +28,12 @@ function wav(freq,s,rate=22050){const n=Math.round(s*rate),b=Buffer.alloc(44+n*2
    await page.mouse.move(b.x+b.width*2/3,b.y+b.height/2);await page.mouse.down();await page.mouse.move(x,b.y+b.height/2,{steps:6});await page.mouse.up();await page.waitForTimeout(250);
    return page.evaluate(k=>(cfg.soundVolumes||{})[k],key);};
   const ratio=(a,b)=>+(a/b).toFixed(2);
+  // 짧게 튀는 소리는 최댓값이 측정 시점에 따라 흔들려, 볼륨 비율은 구간 평균으로 잰다.
+  const level=async(ms=500)=>{let s=0,n=0;const end=Date.now()+ms;while(Date.now()<end){s+=await page.evaluate(()=>window.__rms());n++;await page.waitForTimeout(20);}return s/n;};
 
   // 1) 연속 재생 곡별 볼륨 줄이 보이고, 곡별·전체 볼륨이 실제 출력에 적용된다.
   const rows=await page.evaluate(()=>[...document.querySelectorAll('.vol-row')].map(r=>r.dataset.key));
-  assert.deepEqual(rows,['bgm_all','bgm_idle','bgm_select','bgm_play','bgm_list_t1','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene'],'볼륨 줄: BGM 전체·곡별·효과음 전체·연출 소리');
+  assert.deepEqual(rows,['bgm_all','bgm_idle','bgm_select','bgm_play','bgm_list_t1','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene','sfx_touch'],'볼륨 줄: BGM 전체·곡별·효과음 전체·연출 소리');
   const full=await peak();
   const v1=await drag('bgm_list_t1',50);const half=await peak();
   const v2=await drag('bgm_all',0);const mute=await peak();
@@ -53,7 +55,7 @@ function wav(freq,s,rate=22050){const n=Math.round(s*rate),b=Buffer.alloc(44+n*2
   const scene=async()=>{const p=peak(500);await page.evaluate(()=>ScrollSound.cue('open',.5,false));const r=await p;await page.evaluate(()=>ScrollSound.stop());return r;};
   const c100=await scene();const cv=await drag('sfx_scene',30);const c30=await scene();
   assert.ok(Math.abs(ratio(c30,c100)-cv/100)<.08,`연출 소리 ${cv}% -> ${ratio(c30,c100)}배`);
-  await drag('sfx_all',0);const c0=await scene();assert.ok(c0<.002,'효과음 전체 0%면 연출 소리도 무음');
+  await drag('sfx_all',0);await page.waitForTimeout(400);const c0=await scene();assert.ok(c0<.002,'효과음 전체 0%면 연출 소리도 무음 '+c0);
   console.log('PASS: 연출 소리: %s% -> 출력 %s배, 효과음 전체 0% -> 무음',cv,ratio(c30,c100));
 
   // 4) 새로 고침 후에도 저장된 볼륨이 그대로 적용된다.
@@ -73,12 +75,34 @@ function wav(freq,s,rate=22050){const n=Math.round(s*rate),b=Buffer.alloc(44+n*2
   await page.evaluate(()=>{openAdmin();pinBuf=String(cfg.adminPin);checkPin();admTab('settings');});
   const st=await page.evaluate(()=>({A:document.querySelector('[data-sfx="congrats_A"]').textContent,B:document.querySelector('[data-sfx="congrats_B"]').textContent,cueA:congratsCueOf('A').name,cueB:congratsCueOf('B').name}));
   assert.deepEqual(st,{A:'미등록 · 기본음(LEVELUP)',B:'✓ congrats-b-test.wav · 1.0초',cueA:'congrats',cueB:'congrats:B'},'A는 기본음, B는 올린 소리(새로 고침 후에도 유지)');
-  const pv=async g=>{const p=peak(600);await page.evaluate(g=>previewCongrats(g),g);const r=await p;await page.evaluate(()=>ScrollSound.stop());return r;};
+  const pv=async g=>{const p=level(600);await page.evaluate(g=>previewCongrats(g),g);const r=await p;await page.evaluate(()=>ScrollSound.stop());return r;};
   const b100=await pv('B');const bv=await drag('sfx_congrats_B',50);const b50=await pv('B');
   assert.ok(Math.abs(ratio(b50,b100)-bv/100)<.08,`B 축하 볼륨 ${bv}% -> ${ratio(b50,b100)}배`);
   await page.locator(`#pane-settings button[onclick="delMedia('sfx_congrats_B')"]`).click();
   await page.waitForFunction(()=>!ScrollSound.has('congrats:B')&&congratsCueOf('B').name==='congrats'&&(document.querySelector('[data-sfx="congrats_B"]')||{}).textContent==='미등록 · 기본음(LEVELUP)',null,{timeout:5000});
   assert.deepEqual(errors,[]);
   console.log('PASS: B 축하음 업로드 -> 상태 표시·새로 고침 후 유지, 볼륨 %s% -> 출력 %s배, 삭제하면 기본음(LEVELUP)',bv,ratio(b50,b100));
+
+  // 6) 소환서 터치음: 한 번에(3종) / 나눠서(개봉 순간 차임) / 끄기, 볼륨, 개봉 때 줄어듦, 연달아 눌러도 한 번.
+  await page.waitForFunction(()=>ScrollSound.has('touch:all')&&ScrollSound.has('touch:hit')&&ScrollSound.has('touch:chime'),null,{timeout:8000});
+  const touch=async(mode,fn)=>page.evaluate(([m,f])=>{cfg.touchSfxMode=m;touchSfxAt=-1e9;ScrollSound.fadeFx('touch',.01);ScrollSound.fadeFx('chime',.01);if(f==='play')playTouchSfx();else if(f==='reveal')touchSfxReveal();},[mode,fn]);
+  await page.evaluate(()=>{Object.values(bgmEl).forEach(x=>x.pause());ScrollSound.stop();});
+  await page.waitForTimeout(200);
+  await touch('all','play');const tAll=await peak(500);
+  const twice=await page.evaluate(()=>{playTouchSfx();return ScrollSound.fxActive('touch');});
+  await page.evaluate(()=>touchSfxReveal());await page.waitForTimeout(1100);const tFaded=await peak(300);
+  assert.ok(tAll>.05,'한 번에: 터치 순간 소리 '+tAll);assert.ok(tFaded<.003,'개봉 때 0.9초 동안 줄어 사라짐 '+tFaded);assert.equal(twice,true);
+  await touch('split','play');const tHit=await peak(400);
+  await page.evaluate(()=>{ScrollSound.fadeFx('touch',.01);touchSfxReveal();});const tChime=await peak(500);
+  assert.ok(tHit>.05&&tChime>.02,'나눠서: 터치 순간 임팩트·럼블, 개봉 순간 차임 '+[tHit,tChime]);
+  await page.evaluate(()=>ScrollSound.fadeFx('chime',.01));await page.waitForTimeout(100);
+  await touch('off','play');const tOff=await peak(400);assert.ok(tOff<.002,'끄기: 소리 없음');
+  await page.evaluate(()=>{openAdmin();pinBuf=String(cfg.adminPin);checkPin();admTab('settings');});
+  assert.equal(await page.evaluate(()=>document.getElementById('touch-sfx-mode').value),'off','관리자 선택 상자에 현재 방식 표시');
+  // 볼륨 비율은 터치 1.0~1.6초 구간(럼블이 고르게 이어지는 부분)에서 잰다.
+  await touch('all','play');await page.waitForTimeout(1000);const v100=await level(600);const tv=await drag('sfx_touch',50);await page.waitForTimeout(100);await touch('all','play');await page.waitForTimeout(1000);const v50=await level(600);
+  assert.ok(Math.abs(ratio(v50,v100)-tv/100)<.1,`터치음 볼륨 ${tv}% -> ${ratio(v50,v100)}배`);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: 소환서 터치음: 한 번에 -> 개봉 때 사라짐, 나눠서 -> 개봉 순간 차임, 끄기 -> 무음, 볼륨 %s% -> 출력 %s배',tv,ratio(v50,v100));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

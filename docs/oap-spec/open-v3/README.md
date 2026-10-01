@@ -42,3 +42,28 @@
 - 드래그 UI: 높이 150 → 200(아래 끝 2261 유지), 손잡이 폭 24%, 쉐브론 선 12 → 15px, 손잡이 화살표 확대.
 - 시안 비교(현재·A~D): `resource/oap/mockups/slide-bar/slide-bar-options.png`
 - 이전 프레임 영상: `resource/oap/ae-work/render/open-v3-barB/open-frame-loop-v21.mp4`
+
+## v30 변경: 소환서 터치음
+
+- **목적:** 드래그가 빠르면 개봉 영상에 맞춘 긁는 소리가 "휘리릭" 지나가 임팩트가 약하다. 누르는 순간에 확실한 소리를 준다.
+- **원본:** `resource/audio/final-assets/`
+  - `Magical flash impact_1.wav`(5.6초)
+  - `Magical flash rumble_1.wav`(9.6초, 4초 동안 −8dB로 크게 지속)
+  - `Magical flash chime tail_1.wav`(6.2초)
+- **앱용 가공(`app/assets/figure/`):** 48kHz 모노, 리미터로 최대 −1dB
+  - `open-touch-all.wav`: 임팩트 1.0 + 럼블 0.55 + 차임 0.8, 4.5초(3.0초부터 페이드아웃)
+  - `open-touch-hit.wav`: 임팩트 + 럼블, 4.5초
+  - `open-touch-chime.wav`: 차임 0.9, 3.5초(2.2초부터 페이드아웃)
+  - 가공 이유: 그대로 겹치면 클리핑되고, 럼블이 길게 남아 축하음·특별 영상·당첨음을 덮는다.
+- **재생 시점:**
+  - 소환서를 누르는 순간(`beginScrollScrub`, 키보드 자동 개봉 포함)에 재생한다.
+  - 1.2초 안에 다시 눌러도 다시 울리지 않는다.
+  - 개봉(흰 섬광, `finishScrollReveal`) 때 0.9초 동안 줄어든다.
+  - 끝까지 열지 않고 손을 떼면(`startScrollLoop`) 0.4초 동안 줄어든다.
+- **방식(관리자 → 설정 → 효과음 → 소환서 터치음):**
+  - 한 번에(기본): 터치 순간 3종을 함께 낸다.
+  - 나눠서: 터치 순간 임팩트·럼블, 개봉 순간 차임
+  - 끄기
+- **볼륨:** "소환서 터치음" 볼륨(▶ 듣기) × 효과음 전체 × 연출 소리
+- **재생 경로:** `ScrollSound.fx/fadeFx`. 긁는 소리·연출 영상 소리의 `stop()`과 따로 관리해 서로 끊지 않는다.
+- **비교용 미리듣기:** `resource/oap/mockups/open-touch/`

@@ -110,6 +110,7 @@ const sceneVolume=()=>soundVolume('sfx_all')*soundVolume('sfx_scene');
 function applySceneVolume(){ScrollSound.setVolume(sceneVolume());}
 applySceneVolume();
 const volumeRow=(key,label)=>{const v=Math.round(soundVolume(key)*100);const kind={sfx_pick:'pick',sfx_win:'win',sfx_special:'fanfare',sfx_participation:'participation'}[key];
+  if(key==='sfx_touch')return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output><button class="adm-btn sec" onclick="previewTouchSfx()">▶ 듣기</button></div>`;
   const cg=/^sfx_congrats_([AB])$/.exec(key);if(cg)return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output><button class="adm-btn sec" onclick="previewCongrats('${cg[1]}')">▶ 듣기</button></div>`;
   return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output>${kind?`<button class="adm-btn sec" onclick="playSfx('${kind}')">▶ 듣기</button>`:''}</div>`;};
 const baseLoadBgm=loadBgm;
@@ -120,6 +121,31 @@ startBgm=function(slot){
   if(bgmPlaylistMode()||bgmSingle()){const a=bgmEl[slot];if(curBgm===slot&&a&&a.src&&!a.paused&&!cfg.muted){syncBgmGain(a);unlockAudio();return;}}
   figureBase.startBgm(slot);
 };
+// 소환서 터치음(관리자 선택): all = 터치 순간 임팩트·럼블·차임 한 번에 / split = 터치 순간 임팩트·럼블, 개봉 순간 차임 / off.
+// 원본 3종(Magical flash impact·rumble·chime tail)을 길이 4.5초 안팎으로 다듬고 리미터로 믹스한 WAV를 쓴다.
+const TOUCH_SFX={all:'touch:all',hit:'touch:hit',chime:'touch:chime'};
+if(typeof fetch==='function')for(const [k,file] of [['all','open-touch-all'],['hit','open-touch-hit'],['chime','open-touch-chime']])fetch(`assets/figure/${file}.wav`).then(r=>r.ok?r.arrayBuffer():null).then(b=>b&&ScrollSound.addClip(TOUCH_SFX[k],b)).catch(()=>{});
+const touchSfxMode=()=>['all','split','off'].includes(cfg.touchSfxMode)?cfg.touchSfxMode:'all';
+let touchSfxAt=-1e9;
+function playTouchSfx(){
+  if(cfg.muted||touchSfxMode()==='off')return;
+  // 연달아 눌러도 1.2초 안에는 다시 울리지 않는다(소리가 겹겹이 쌓이지 않게).
+  const now=performance.now();if(now-touchSfxAt<1200)return;touchSfxAt=now;
+  unlockAudio();ScrollSound.fx(touchSfxMode()==='split'?TOUCH_SFX.hit:TOUCH_SFX.all,.8*soundVolume('sfx_touch'),'touch');
+}
+// 개봉 완료(흰 섬광): 터치음은 0.9초 동안 줄여 다음 소리(축하음·특별 영상·당첨음)를 덮지 않게 한다. 나눠서 방식이면 이때 차임을 울린다.
+function touchSfxReveal(){
+  ScrollSound.fadeFx('touch',.9);
+  if(!cfg.muted&&touchSfxMode()==='split')ScrollSound.fx(TOUCH_SFX.chime,.8*soundVolume('sfx_touch'),'chime');
+}
+// 끝까지 열지 않고 손을 떼 되돌아가면 0.4초 동안 줄인다.
+function touchSfxCancel(){ScrollSound.fadeFx('touch',.4);}
+function previewTouchSfx(){touchSfxAt=-1e9;ScrollSound.fadeFx('touch',.05);ScrollSound.fadeFx('chime',.05);playTouchSfx();if(touchSfxMode()==='split')setTimeout(()=>{if(!cfg.muted)ScrollSound.fx(TOUCH_SFX.chime,.8*soundVolume('sfx_touch'),'chime');},1500);}
+function saveTouchSfxMode(){
+  const old=cfg.touchSfxMode;cfg.touchSfxMode=document.getElementById('touch-sfx-mode').value;
+  if(!saveCfg()){cfg.touchSfxMode=old;toast('설정 저장 실패');renderAdmSettings();return;}
+  toast({all:'소환서 터치음: 한 번에',split:'소환서 터치음: 나눠서',off:'소환서 터치음: 끄기'}[touchSfxMode()]);
+}
 const scrollVideo=()=>document.getElementById('scroll-video');
 let whiteoutFrame=0;
 function scrollMix(active){
@@ -336,7 +362,7 @@ function startScrollLoop(){
   openingAudioActive=false;
   cancelScrollWait();
   scrollPrimeEpoch++;scrollPrimeTask=null;
-  ScrollSound.stop();scrollMix(currentScreen==='scr-open');revealWhiteHold=false;scrollWhiteout(0);
+  ScrollSound.stop();touchSfxCancel();scrollMix(currentScreen==='scr-open');revealWhiteHold=false;scrollWhiteout(0);
   scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();setScrollProgress(0);
   document.getElementById('scroll-drag').classList.remove('scrubbing');
   // The idle loop keeps the clip's own sound (frames 0-100 of the source), following the admin mute switch.
@@ -352,7 +378,7 @@ function startScrollLoop(){
   });
 }
 function beginScrollScrub(){
-  const v=scrollVideo();
+  const v=scrollVideo();if(!drawing)playTouchSfx();
   v.pause();v.playbackRate=1;v.muted=true;v.loop=false;scrollScrubbing=true;ScrollSound.begin();scrollMix(true);
   const box=document.getElementById('scroll-drag');
   // Hide the previous decoded frame BEFORE requesting the rewind. Seeking is asynchronous.
@@ -383,7 +409,7 @@ scrollVideo().addEventListener('seeked',scrollMediaReady);
 // Shared ending for both paths: fully white, result screen underneath, then the white lifts.
 function finishScrollReveal(){
   openingAudioActive=false;
-  ScrollSound.stop();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();revealWhiteHold=true;scrollWhiteout(1);clearTimeout(openingTimer);
+  ScrollSound.stop();touchSfxReveal();scrollScrubbing=false;scrollSeekTarget=null;scrollVideo().pause();revealWhiteHold=true;scrollWhiteout(1);clearTimeout(openingTimer);
   const epoch=figureEpoch,result=lastResult;
   const reveal=()=>{
     if(epoch!==figureEpoch||result!==lastResult||currentScreen!=='scr-open')return;
@@ -778,7 +804,7 @@ renderAdmSettings = function(){
   const sfxHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('효과음'));
   if(sfxHead){sfxHead.insertAdjacentHTML('afterend',volumeRow('sfx_all','효과음 전체'));
     const last=sfxHead.parentElement.querySelector('.muted-note');
-    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">A·B 축하 = A·B 등급 축하 화면(1.8초) 소리. 올리지 않으면 기본 LEVELUP 소리이며, 1.8초보다 길면 다음 화면으로 넘어갈 때 짧게 줄어들며 끝납니다. 연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하음. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>'+`<details class="sound-log"><summary>최근 효과음 기록(소리가 안 날 때 확인)</summary><ol id="sound-log">${soundLogHtml()}</ol></details>`);}
+    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+`<div class="adm-row"><label for="touch-sfx-mode">소환서 터치음</label><select id="touch-sfx-mode" onchange="saveTouchSfxMode()"><option value="all" ${touchSfxMode()==='all'?'selected':''}>한 번에 (터치 순간 3종)</option><option value="split" ${touchSfxMode()==='split'?'selected':''}>나눠서 (터치: 임팩트·럼블 / 개봉 순간: 차임)</option><option value="off" ${touchSfxMode()==='off'?'selected':''}>끄기</option></select></div>`+volumeRow('sfx_touch','소환서 터치음')+'<p class="figure-rule-note">소환서 터치음 = 오픈 화면에서 소환서를 누르는 순간의 소리. 개봉(흰 섬광) 때 0.9초 동안 줄어들고, 끝까지 열지 않고 손을 떼면 0.4초 동안 줄어듭니다. 나눠서 방식은 개봉 순간에 차임이 울립니다. '+'</p><p class="figure-rule-note">A·B 축하 = A·B 등급 축하 화면(1.8초) 소리. 올리지 않으면 기본 LEVELUP 소리이며, 1.8초보다 길면 다음 화면으로 넘어갈 때 짧게 줄어들며 끝납니다. 연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하음. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>'+`<details class="sound-log"><summary>최근 효과음 기록(소리가 안 날 때 확인)</summary><ol id="sound-log">${soundLogHtml()}</ol></details>`);}
   const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
 }
 function saveScreenTransitions(){

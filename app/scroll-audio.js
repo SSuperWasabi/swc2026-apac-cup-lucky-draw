@@ -60,5 +60,19 @@ const ScrollSound=(()=>{
     source.start(now,offset,duration);
   }
   if(typeof fetch==='function')prepare();
-  return {addClip,begin,cue,has,loop,scrub,stop,setVolume,setClip};
+  // 한 번 울리는 소리(소환서 터치음 등). 긁는 소리·연출 영상 소리의 stop()과 따로 관리해 서로 끊지 않는다.
+  const fxVoices=new Map();
+  function fx(name,gain=1,key=name){
+    if(!has(name))return false;
+    if(context.state!=='running')context.resume().catch(()=>{});
+    const source=context.createBufferSource(),level=context.createGain();source.buffer=clips[name];level.gain.value=Math.max(0,Number(gain)||0);source.level=level;
+    source.connect(level);level.connect(out());
+    const set=fxVoices.get(key)||new Set();set.add(source);fxVoices.set(key,set);
+    source.onended=()=>{set.delete(source);source.disconnect();level.disconnect();};
+    source.start();return true;
+  }
+  // key로 묶인 소리를 fade초 동안 줄이며 멈춘다.
+  function fadeFx(key,fade=.4){const set=fxVoices.get(key);if(!set||!context)return;const now=context.currentTime;for(const s of set){try{s.level.gain.cancelScheduledValues(now);s.level.gain.setValueAtTime(s.level.gain.value,now);s.level.gain.linearRampToValueAtTime(0,now+fade);s.stop(now+fade+.02);}catch{}}set.clear();}
+  function fxActive(key){const set=fxVoices.get(key);return !!(set&&set.size);}
+  return {addClip,begin,cue,has,loop,scrub,stop,setVolume,setClip,fx,fadeFx,fxActive};
 })();
