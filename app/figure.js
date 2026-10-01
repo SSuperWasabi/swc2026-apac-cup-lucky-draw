@@ -102,6 +102,7 @@ const sceneVolume=()=>soundVolume('sfx_all')*soundVolume('sfx_scene');
 function applySceneVolume(){ScrollSound.setVolume(sceneVolume());}
 applySceneVolume();
 const volumeRow=(key,label)=>{const v=Math.round(soundVolume(key)*100);const kind={sfx_pick:'pick',sfx_win:'win',sfx_special:'fanfare',sfx_participation:'participation'}[key];
+  const cg=/^sfx_congrats_([AB])$/.exec(key);if(cg)return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output><button class="adm-btn sec" onclick="previewCongrats('${cg[1]}')">▶ 듣기</button></div>`;
   return `<div class="adm-row vol-row" data-key="${key}"><label>${label} 볼륨</label><input type="range" min="0" max="150" step="5" value="${v}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="setSoundVolume('${key}',this.value)"><output>${v}%</output>${kind?`<button class="adm-btn sec" onclick="playSfx('${kind}')">▶ 듣기</button>`:''}</div>`;};
 const baseLoadBgm=loadBgm;
 loadBgm=async function(){await baseLoadBgm();await loadBgmPlaylist();};
@@ -186,7 +187,8 @@ function playCongrats(epoch,clip,onShown){
   stage.classList.remove('fading','loading');stage.classList.add('active','congrats');
   c.dataset.grade=clip.grade;if(c.getAttribute('src')!==clip.src){c.src=clip.src;c.load();}
   // 축하음은 Web Audio로 그림 위치에 맞춰 낸다(iPad 제스처 밖 재생). 디코딩에 실패했으면 영상 자체 소리를 쓴다.
-  c.muted=congratsSoundReady?true:!!cfg.muted;c.volume=Math.min(1,sceneVolume());try{c.currentTime=0;}catch{}
+  congratsCue=congratsCueOf(clip.grade);
+  c.muted=congratsCue?true:!!cfg.muted;c.volume=Math.min(1,sceneVolume()*soundVolume('sfx_congrats_'+clip.grade));try{c.currentTime=0;}catch{}
   summonFirstFrame(c,()=>{if(token===summonLoadToken&&onShown)onShown();});
   c.play().catch(()=>{if(c.muted)return congratsDone(epoch,token);c.muted=true;c.play().catch(()=>congratsDone(epoch,token));});
   summonTimer=setTimeout(()=>congratsDone(epoch,token),6000);
@@ -207,7 +209,7 @@ function preloadSummonClip(item){
   v.play().then(()=>{if(summonWarm){v.pause();try{v.currentTime=0;}catch{}}}).catch(()=>{}).finally(()=>{summonWarm=false;});
 }
 const congratsEl=congratsVideo();
-congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsSoundReady)ScrollSound.cue('congrats',congratsEl.currentTime,!!cfg.muted);});
+congratsEl.addEventListener('playing',()=>{if(summonStage().classList.contains('congrats')&&congratsCue)ScrollSound.cue(congratsCue.name,congratsEl.currentTime,!!cfg.muted,false,1,congratsCue.gain);});
 congratsEl.addEventListener('ended',()=>congratsDone(summonEpoch,summonLoadToken));
 congratsEl.addEventListener('error',()=>{if(congratsEl.getAttribute('src'))congratsDone(summonEpoch,summonLoadToken);});
 // 새 소스의 첫 장면이 실제로 화면에 올라온 뒤에 fn을 부른다.
@@ -218,7 +220,7 @@ function summonFirstFrame(v,fn){
 // 다음 연출 영상으로 넘어가거나, 남은 것이 없으면 결과 화면으로 간다.
 function summonNext(epoch){if(summonQueue.length&&epoch===summonEpoch&&summonActive()&&currentScreen==='scr-open')playSummonClip(epoch);else endSummon(epoch);}
 function playSummonClip(epoch,onShown,preloaded=false){
-  const item=summonQueue.shift(),[v,b]=summonVideos(),stage=summonStage(),hold=document.getElementById('summon-hold');summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop();summonWarm=false;
+  const item=summonQueue.shift(),[v,b]=summonVideos(),stage=summonStage(),hold=document.getElementById('summon-hold');summonEpoch=epoch;clearTimeout(summonTimer);ScrollSound.stop(preloaded?.15:0);summonWarm=false;
   // 축하 화면 밑에서 미리 준비한 특별 영상은 소스를 다시 넣지 않고 바로 재생한다(축하 화면 마지막 장면이 위를 덮고 있다).
   const ready=preloaded&&v.getAttribute('src')===item.src;
   // 새 영상의 첫 장면 전까지 이전 소스(기본 제라툴 소환 영상·포스터)가 비치지 않게 가린다.
@@ -597,7 +599,18 @@ const CONGRATS_GRADES=['A','B'];
 const congratsUrls={};
 const congratsClipOf=result=>{const g=prizeGradeOf(result&&result.prize);return CONGRATS_GRADES.includes(g)?{grade:g,src:congratsUrls[g]||`assets/oap/grade/congrats-${g}.mp4`}:null;};
 if(typeof fetch==='function')CONGRATS_GRADES.forEach(g=>fetch(`assets/oap/grade/congrats-${g}.mp4`).then(r=>r.ok?r.blob():null).then(b=>{if(b){const u=URL.createObjectURL(b);figureObjectUrls.push(u);congratsUrls[g]=u;}}).catch(()=>{}));
-let congratsSoundReady=false;
+let congratsSoundReady=false,congratsCue=null;
+// 축하음 선택: 관리자가 올린 등급별 소리(sfx_congrats_A/B) -> 없으면 앱 기본 소리(LEVELUP). 볼륨은 등급별 슬롯 값.
+const congratsCueOf=g=>{const name=ScrollSound.has('congrats:'+g)?'congrats:'+g:congratsSoundReady?'congrats':null;return name?{name,gain:soundVolume('sfx_congrats_'+g)}:null;};
+const congratsSfx={};
+async function loadCongratsSfx(){
+  for(const g of CONGRATS_GRADES){
+    const d=await idbGet('sfx_congrats_'+g);let buf=null;
+    if(d){try{const ab=await sfxArrayBuffer(d),c=audioCtx();if(ab&&c)buf=await c.decodeAudioData(ab);}catch{}}
+    ScrollSound.setClip('congrats:'+g,buf);sfxBuf['congrats_'+g]=buf||undefined;if(!buf)delete sfxBuf['congrats_'+g];
+  }
+}
+function previewCongrats(g){unlockAudio();const q=congratsCueOf(g);if(q&&!cfg.muted)ScrollSound.cue(q.name,0,false,false,1,q.gain);}
 if(typeof fetch==='function')fetch('assets/oap/grade/congrats-sound.wav').then(r=>r.ok?r.arrayBuffer():null).then(buf=>buf&&ScrollSound.addClip('congrats',buf)).then(ok=>{congratsSoundReady=!!ok;}).catch(()=>{});
 renderAdmIps = function(){
   figureBase.renderAdmIps();
@@ -639,7 +652,7 @@ async function uploadFigureVideo(ii,pi,field){
 function removeFigureVideo(ii,pi,field){const p=cfg.ips[ii].prizes[pi],old=p[field];delete p[field];if(!saveCfg()){p[field]=old;toast('설정 저장 실패');return;}scheduleResultLoop();renderAdmIps();}
 // Effect sounds: a file that decodes on the uploading device is stored as 16-bit WAV, so a PC-made backup
 // (e.g. an .ogg Chrome can play) still plays on iPad. The admin rows show what each slot holds on this device.
-const SFX_SLOTS=['pick','win','special','participation'];
+const SFX_SLOTS=['pick','win','special','participation','congrats_A','congrats_B'];
 const sfxInfo={};
 function encodeWav(buffer){
   const ch=Math.min(2,buffer.numberOfChannels),rate=buffer.sampleRate,n=buffer.length,out=new DataView(new ArrayBuffer(44+n*ch*2));
@@ -654,7 +667,9 @@ async function refreshSfxInfo(){
   for(const k of SFX_SLOTS){const d=await idbGet('sfx_'+k);sfxInfo[k]=d?{name:d.name||'업로드 파일',ok:!!sfxBuf[k],sec:sfxBuf[k]?sfxBuf[k].duration:null}:null;}
 }
 const baseLoadSfx=loadSfx;
-loadSfx=async function(){await baseLoadSfx();await refreshSfxInfo();};
+loadSfx=async function(){await baseLoadSfx();await loadCongratsSfx();await refreshSfxInfo();};
+// 부팅 직후에는 저장소(IndexedDB)가 아직 열리지 않았을 수 있어, 열린 뒤에 등급별 축하음을 읽는다.
+new Promise(r=>{const t=()=>idb?r():setTimeout(t,100);t();}).then(loadCongratsSfx).then(refreshSfxInfo).catch(()=>{});
 const baseUploadMedia=uploadMedia;
 uploadMedia=async function(key,accept){
   if(!key.startsWith('sfx_'))return baseUploadMedia(key,accept);
@@ -669,10 +684,10 @@ uploadMedia=async function(key,accept){
   await loadSfx();renderAdmSettings();toast('업로드 완료');
 };
 const baseDelMedia=delMedia;
-delMedia=async function(key){await baseDelMedia(key);if(key.startsWith('sfx_')){await refreshSfxInfo();renderAdmSettings();}};
+delMedia=async function(key){await baseDelMedia(key);if(key.startsWith('sfx_')){if(key.startsWith('sfx_congrats_'))await loadCongratsSfx();await refreshSfxInfo();renderAdmSettings();}};
 function sfxStatusText(k){
   const i=sfxInfo[k];
-  if(!i)return ['sfx-none','미등록 · 기본음'];
+  if(!i)return ['sfx-none',k.startsWith('congrats_')?'미등록 · 기본음(LEVELUP)':'미등록 · 기본음'];
   if(!i.ok)return ['sfx-bad','⚠ 이 기기에서 재생 불가 — 다시 올려 주세요'];
   return ['sfx-ok','✓ '+i.name+(i.sec!=null?' · '+i.sec.toFixed(1)+'초':'')];
 }
@@ -681,7 +696,9 @@ renderAdmSettings = function(){
   for(const [key,label] of [['bgm_idle','대기'],['bgm_select','선택'],['bgm_play','뽑기']]){
     const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
   }
-  for(const [key,label] of [['sfx_pick','뽑기음'],['sfx_win','일반당첨'],['sfx_special','스페셜'],['sfx_participation','참가상']]){
+  const partRow=document.querySelector(`#pane-settings [onclick^="uploadMedia('sfx_participation'"]`);
+  if(partRow)partRow.closest('.adm-row').insertAdjacentHTML('afterend',CONGRATS_GRADES.map(g=>`<div class="adm-row"><label>${g} 축하</label><button class="adm-btn sec" onclick="uploadMedia('sfx_congrats_${g}','audio/*')">업로드</button><button class="adm-btn dng" onclick="delMedia('sfx_congrats_${g}')">삭제</button></div>`).join(''));
+  for(const [key,label] of [['sfx_pick','뽑기음'],['sfx_win','일반당첨'],['sfx_special','스페셜'],['sfx_participation','참가상'],['sfx_congrats_A','A 축하'],['sfx_congrats_B','B 축하']]){
     const btn=document.querySelector(`#pane-settings [onclick^="uploadMedia('${key}'"]`);if(btn)btn.closest('.adm-row').insertAdjacentHTML('afterend',volumeRow(key,label));
   }
   for(const k of SFX_SLOTS){
@@ -723,7 +740,7 @@ renderAdmSettings = function(){
   const sfxHead=[...root.querySelectorAll('.adm-card h4')].find(h=>h.textContent.startsWith('효과음'));
   if(sfxHead){sfxHead.insertAdjacentHTML('afterend',volumeRow('sfx_all','효과음 전체'));
     const last=sfxHead.parentElement.querySelector('.muted-note');
-    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하 화면 소리. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>');}
+    (last||sfxHead).insertAdjacentHTML(last?'beforebegin':'afterend',volumeRow('sfx_scene','연출 소리')+'<p class="figure-rule-note">A·B 축하 = A·B 등급 축하 화면(1.8초) 소리. 올리지 않으면 기본 LEVELUP 소리이며, 1.8초보다 길면 다음 화면으로 넘어갈 때 짧게 줄어들며 끝납니다. 연출 소리 = 소환서 개봉·대기 화면 소리, 특별 영상·A/B 축하음. 효과음 전체는 모든 효과음과 연출 소리에 함께 적용됩니다.</p>');}
   const note=document.createElement('p');note.className='figure-rule-note';note.textContent='소환서 선택 → 드래그 개봉 → 결과 흐름을 사용합니다. 기존 라인업·NPC 설정은 이 흐름에 적용하지 않습니다. 상급 전체 쿨다운과 구간 제한은 위 시간 제한 카드에서 설정합니다. 대기 영상과 BGM·효과음은 그대로 사용할 수 있습니다.';card.appendChild(note);
 }
 function saveScreenTransitions(){

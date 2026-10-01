@@ -24,18 +24,23 @@ const ScrollSound=(()=>{
     if(!context||clips[name])return !!clips[name];
     try{clips[name]=await context.decodeAudioData(buffer.slice(0));return true;}catch{return false;}
   }
-  function stop(){for(const v of voices){try{v.stop();}catch{}}voices.clear();}
+  // 업로드한 소리로 교체하거나(buffer) 지운다(null).
+  function setClip(name,buffer){if(buffer)clips[name]=buffer;else delete clips[name];}
+  // fade초 동안 줄이며 멈춘다. 줄어드는 소리는 바로 다음 cue가 끊지 않는다.
+  function stop(fade=0){const now=context?context.currentTime:0;for(const v of voices){try{if(fade>0&&v.level){v.level.gain.setValueAtTime(v.level.gain.value,now);v.level.gain.linearRampToValueAtTime(0,now+fade);v.stop(now+fade);}else v.stop();}catch{}}voices.clear();}
   function begin(){stop();previous=0;lastGrain=-Infinity;if(context&&context.state!=='running')context.resume().catch(()=>{});}
   function has(name){return !!(context&&clips[name]);}
   // Play a decoded clip from `offset` seconds (looping for the idle bed). Returns false only when Web Audio
   // cannot carry it, so the caller can fall back to the video element's own audio track.
-  function cue(name,offset,muted,loop=false,rate=1){
+  function cue(name,offset,muted,loop=false,rate=1,gain=1){
     stop();if(muted)return true;
     if(!has(name))return false;
     if(context.state!=='running')context.resume().catch(()=>{});
     const buffer=clips[name],source=context.createBufferSource();source.buffer=buffer;source.loop=loop;source.playbackRate.value=rate;
-    source.connect(out());voices.add(source);
-    source.onended=()=>{voices.delete(source);source.disconnect();};
+    // 소리마다 볼륨 노드를 둔다(소리별 볼륨, 부드럽게 멈추기).
+    const level=context.createGain();level.gain.value=Math.max(0,Number(gain)||0);source.level=level;
+    source.connect(level);level.connect(out());voices.add(source);
+    source.onended=()=>{voices.delete(source);source.disconnect();level.disconnect();};
     const at=Math.max(0,Number(offset)||0);
     source.start(0,loop?at%buffer.duration:Math.min(at,buffer.duration));
     return true;
@@ -55,5 +60,5 @@ const ScrollSound=(()=>{
     source.start(now,offset,duration);
   }
   if(typeof fetch==='function')prepare();
-  return {addClip,begin,cue,has,loop,scrub,stop,setVolume};
+  return {addClip,begin,cue,has,loop,scrub,stop,setVolume,setClip};
 })();

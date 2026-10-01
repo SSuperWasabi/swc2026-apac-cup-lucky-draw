@@ -31,7 +31,7 @@ function wav(freq,s,rate=22050){const n=Math.round(s*rate),b=Buffer.alloc(44+n*2
 
   // 1) 연속 재생 곡별 볼륨 줄이 보이고, 곡별·전체 볼륨이 실제 출력에 적용된다.
   const rows=await page.evaluate(()=>[...document.querySelectorAll('.vol-row')].map(r=>r.dataset.key));
-  assert.deepEqual(rows,['bgm_all','bgm_idle','bgm_select','bgm_play','bgm_list_t1','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_scene'],'볼륨 줄: BGM 전체·곡별·효과음 전체·연출 소리');
+  assert.deepEqual(rows,['bgm_all','bgm_idle','bgm_select','bgm_play','bgm_list_t1','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene'],'볼륨 줄: BGM 전체·곡별·효과음 전체·연출 소리');
   const full=await peak();
   const v1=await drag('bgm_list_t1',50);const half=await peak();
   const v2=await drag('bgm_all',0);const mute=await peak();
@@ -62,5 +62,23 @@ function wav(freq,s,rate=22050){const n=Math.round(s*rate),b=Buffer.alloc(44+n*2
   assert.equal(kept.bgm_all,150);assert.equal(kept.sfx_all,0);assert.equal(kept.sfx_scene,cv);
   assert.deepEqual(errors,[]);
   console.log('PASS: 볼륨 설정이 새로 고침 후에도 유지됨');
+
+  // 5) A·B 축하음 업로드(관리자 파일 선택) -> 상태 표시, 새로 고침 후 유지, 미리 듣기 볼륨, 삭제하면 기본음.
+  const tmp=require('node:os').tmpdir()+'/congrats-b-test.wav';fs.writeFileSync(tmp,Buffer.from(wav(880,1.0),'base64'));
+  await page.evaluate(()=>{setSoundVolume('sfx_all',100);setSoundVolume('sfx_scene',100);openAdmin();pinBuf=String(cfg.adminPin);checkPin();admTab('settings');});
+  const up=page.locator(`#pane-settings button[onclick^="uploadMedia('sfx_congrats_B'"]`);await up.scrollIntoViewIfNeeded();
+  const [chooser]=await Promise.all([page.waitForEvent('filechooser'),up.click()]);await chooser.setFiles(tmp);
+  await page.waitForFunction(()=>ScrollSound.has('congrats:B')&&/congrats-b-test/.test((document.querySelector('[data-sfx="congrats_B"]')||{}).textContent||''),null,{timeout:8000});
+  await page.reload({waitUntil:'load'});await page.waitForFunction(()=>typeof idb!=='undefined'&&idb&&ScrollSound.has('congrats:B')&&congratsSoundReady,null,{timeout:10000});
+  await page.evaluate(()=>{openAdmin();pinBuf=String(cfg.adminPin);checkPin();admTab('settings');});
+  const st=await page.evaluate(()=>({A:document.querySelector('[data-sfx="congrats_A"]').textContent,B:document.querySelector('[data-sfx="congrats_B"]').textContent,cueA:congratsCueOf('A').name,cueB:congratsCueOf('B').name}));
+  assert.deepEqual(st,{A:'미등록 · 기본음(LEVELUP)',B:'✓ congrats-b-test.wav · 1.0초',cueA:'congrats',cueB:'congrats:B'},'A는 기본음, B는 올린 소리(새로 고침 후에도 유지)');
+  const pv=async g=>{const p=peak(600);await page.evaluate(g=>previewCongrats(g),g);const r=await p;await page.evaluate(()=>ScrollSound.stop());return r;};
+  const b100=await pv('B');const bv=await drag('sfx_congrats_B',50);const b50=await pv('B');
+  assert.ok(Math.abs(ratio(b50,b100)-bv/100)<.08,`B 축하 볼륨 ${bv}% -> ${ratio(b50,b100)}배`);
+  await page.locator(`#pane-settings button[onclick="delMedia('sfx_congrats_B')"]`).click();
+  await page.waitForFunction(()=>!ScrollSound.has('congrats:B')&&congratsCueOf('B').name==='congrats'&&(document.querySelector('[data-sfx="congrats_B"]')||{}).textContent==='미등록 · 기본음(LEVELUP)',null,{timeout:5000});
+  assert.deepEqual(errors,[]);
+  console.log('PASS: B 축하음 업로드 -> 상태 표시·새로 고침 후 유지, 볼륨 %s% -> 출력 %s배, 삭제하면 기본음(LEVELUP)',bv,ratio(b50,b100));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

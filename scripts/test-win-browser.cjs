@@ -169,7 +169,7 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
    let gainSet=null;const c=audioCtx(),orig=c.createGain.bind(c);c.createGain=()=>{const g=orig();gainSet=g;return g;};
    sfxBuf.win=c.createBuffer(1,800,8000);cfg.muted=false;playSfxReady('win',c);c.createGain=orig;cfg.muted=true;delete sfxBuf.win;
    return {rows,saved:JSON.parse(localStorage.getItem('swc2026-apac-lucky-draw.config.v1')).soundVolumes,bgmGain:+bgmGains.get(a).gain.value.toFixed(3),sfxGain:+gainSet.gain.value.toFixed(3),out:document.querySelector('.vol-row[data-key=bgm_idle] output').textContent};});
-  assert.deepEqual(vol.rows,['bgm_all','bgm_idle','bgm_select','bgm_play','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_scene']);
+  assert.deepEqual(vol.rows,['bgm_all','bgm_idle','bgm_select','bgm_play','sfx_all','sfx_pick','sfx_win','sfx_special','sfx_participation','sfx_congrats_A','sfx_congrats_B','sfx_scene']);
   assert.deepEqual(vol.saved,{bgm_idle:50,sfx_win:150});assert.equal(vol.bgmGain,.2);assert.equal(vol.sfxGain,1.2);assert.equal(vol.out,'50%');
   console.log('PASS: volume sliders for every BGM slot and effect sound; saved and applied (BGM 50% -> gain .2, 일반당첨 150% -> gain 1.2)');
 
@@ -218,6 +218,10 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   // 10-2) 특별 영상이 없는 B 등급: 축하 화면 -> 바로 상품 영상.
   await page.evaluate(()=>{resetToIdle();});
   await page.waitForFunction(()=>currentScreen==='scr-idle',null,{timeout:10000});
+  // 관리자가 올린 B 축하음(등급별 슬롯)이 축하 화면에서 실제로 쓰인다.
+  await page.evaluate(async()=>{const c=audioCtx(),buf=c.createBuffer(1,c.sampleRate,c.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.sin(i/8)*.3;
+    await idbPut('sfx_congrats_B',{buf:encodeWav(buf),type:'audio/wav',name:'b.wav'});await loadSfx();
+    const oc=ScrollSound.cue;window.__cues=[];ScrollSound.cue=function(n,...x){if(window.__cues.at(-1)!==n)window.__cues.push(n);return oc.call(this,n,...x);};});
   await start({grade:'B',kind:'figure',winVideoKey:'test_win'});
   await page.locator('#scroll-drag').focus();await page.keyboard.press('Enter');
   await page.waitForFunction(()=>document.getElementById('summon-stage').classList.contains('congrats'),null,{timeout:15000});
@@ -225,7 +229,9 @@ const SPECIAL='assets/figure/zeratu-summon.mp4',WIN='assets/oap/open/open-frame-
   await page.waitForFunction(()=>currentScreen==='scr-result',null,{timeout:10000});
   await page.waitForFunction(()=>!document.getElementById('summon-stage').classList.contains('active'),null,{timeout:3000});
   assert.deepEqual(b2,{grade:'B',queued:0},'B 등급(특별 영상 없음)은 축하 화면만');
-  console.log('PASS: 특별 영상이 없는 B 등급: 축하 화면 -> 바로 상품 영상, 연출 칸 정리됨');
+  assert.ok((await page.evaluate(()=>window.__cues)).includes('congrats:B'),'B 축하 화면은 관리자가 올린 B 축하음으로 재생');
+  await page.evaluate(()=>delMedia('sfx_congrats_B'));
+  console.log('PASS: 특별 영상이 없는 B 등급: 축하 화면(관리자가 올린 B 축하음) -> 바로 상품 영상, 연출 칸 정리됨');
 
   // 11) C 등급: 축하 화면 없이 바로 상품 영상, 배지는 같은 자리에 C.
   await page.evaluate(()=>{resetToIdle();window.__clips=[];});
