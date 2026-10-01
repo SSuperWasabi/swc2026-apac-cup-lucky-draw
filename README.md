@@ -12,7 +12,7 @@ Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 ## 지금 완료한 범위
 
-초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. v10에서 상품을 상급/일반/참가상 3등급으로 나눴고, 모든 상품에 특별 영상·상품 영상을 등록한다(클릭 팝업 영상 삭제). 화면 이동에는 AE 전환 영상을 1.8배속으로 넣었다(선택 → 오픈 제외, [transition](docs/oap-spec/transition/README.md)). v12~v13에서 긴 특별 영상이 11초에 끊기던 문제를 고쳤고, 당첨 효과음을 등급별(스페셜/일반당첨/참가상)로 나눴다. v14에서 메인 타이틀에 검은 소프트 섀도를 넣었고, v15에서 선택 화면 부제를 SWC2026 APAC CUP LUCKY DRAW로 바꿨다. v16에서 BGM 여러 곡 연속 재생, v17에서 대기 영상 연속 순환(셔플 백)을 추가했다. 현재 상태와 현장 준비 목록은 [handoff.md](handoff.md) 21절(최신 유지)에 있다. 참가상 결과 카드는 아직 기반 디자인이다. iPad 실기 확인은 아직이다.
+초기 구현 `7edb0db`의 GitHub Pages 배포 및 격리 Chrome 오프라인 PWA 검증을 완료했다. v2~v3에서 **소환서 선택 화면을 OAP v8**로, v4에서 **소환서 오픈 화면을 OAP v3**로 교체했다(명세 [choose-v8](docs/oap-spec/choose-v8/README.md), [open-v3](docs/oap-spec/open-v3/README.md)). v5~v8에서 **당첨 화면을 상품별 특별 영상 → 당첨 영상(OAP v5) 구조**로 바꿨다. 두 영상은 관리자에서 상품별로 등록한다([win-v5](docs/oap-spec/win-v5/README.md)). 메인 화면 글꼴은 Unbounded. v10에서 상품을 상급/일반/참가상 3등급으로 나눴고, 모든 상품에 특별 영상·상품 영상을 등록한다(클릭 팝업 영상 삭제). 화면 이동에는 AE 전환 영상을 1.8배속으로 넣었다(선택 → 오픈 제외, [transition](docs/oap-spec/transition/README.md)). v12~v13에서 긴 특별 영상이 11초에 끊기던 문제를 고쳤고, 당첨 효과음을 등급별(스페셜/일반당첨/참가상)로 나눴다. v14에서 메인 타이틀에 검은 소프트 섀도를 넣었고, v15에서 선택 화면 부제를 SWC2026 APAC CUP LUCKY DRAW로 바꿨다. v16에서 BGM 여러 곡 연속 재생, v17에서 대기 영상 연속 순환(셔플 백)을 추가했다. v18~v20에서 전환 영상을 54fps 두 영상 블렌드로 바꿔 iPad 끊김을 없앴다. v21~v23(팀 피드백)에서 RANDOM·AUTO OPEN을 없앴고, SLIDE 박스 B안, 표시 등급 A~H 배지, A·B 축하 화면을 넣었다. v24~v30에서 다음을 추가했다: 관리자 볼륨(BGM·효과음 전체·연출 소리, 실제 출력 검증), 축하 화면 1.8초와 특별 영상 끊김 없는 연결, A·B 축하음 업로드, 여러 파일 한 번에 추가, iPad 축하 화면 재생 개선, 소환서 터치음. 현재 상태와 현장 준비 목록은 [handoff.md](handoff.md) 21절(최신 유지)에 있다. 참가상 결과 카드는 아직 기반 디자인이다.
 
 기존 앱 코드·Git 이력·테스트·로컬 리소스를 복제하고 새 앱 식별자를 분리했다. 기존 앱 저장소와 운영 데이터는 변경하지 않는다. 새 앱은 미디어 등록 없음, 재고 0, 추첨 기록 없음으로 시작한다. 기본 두 상품 행은 등록 안내용 빈 틀이며 운영 경품이 아니다.
 
@@ -74,6 +74,7 @@ node scripts/test-win-browser.cjs
 node scripts/test-transition-browser.cjs
 node scripts/test-bgm-playlist-browser.cjs
 node scripts/test-idle-rotation-browser.cjs
+node scripts/test-volume-real-browser.cjs
 ```
 
 브라우저 검사는 격리된 Chrome 프로필과 임시 로컬 서버를 사용하며 실제 운영 데이터에 접근하지 않는다. 인코딩 검사는 `node scripts/test-scroll-encoding.cjs`이며 로컬 ffmpeg 또는 `FFMPEG` 환경변수가 필요하다. `test-tools/package-lock.json`은 검증 의존성을 고정한다.
@@ -98,4 +99,4 @@ AE 원본은 `resource/oap/ae-work/`의 사본에서만 스크립트로 다룬�
 
 ## 다음 단계
 
-선택 화면 v8 iPad 확인과 임시 선택 표시 결정 → 전환 세로판 원본 확보 → 오픈 v3 → 당첨 v5(상품별 AE 사전 렌더링, 현재 제라투 기준). 상세는 handoff.md 9절.
+실제 자산을 모두 넣은 iPad 현장 리허설(상품 7종·특별 영상·볼륨 조정)과 `.kuji` 백업. 결정 대기: 참가상 카드 OAP 디자인, 일괄 등록 화면(2번 안, 보류). 상세는 handoff.md 21절.
