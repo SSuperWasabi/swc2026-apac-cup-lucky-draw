@@ -54,7 +54,7 @@ Figure Draw v32를 계승한 SWC2026 APAC Cup용 독립 PWA 프로젝트.
 
 ## 검증과 개발
 
-Node.js와 Google Chrome이 필요하다. 현재 복제본에는 기존 검증 도구를 로컬 복사해 두었다. GitHub에서 새로 복제한 경우 다음으로 도구를 설치한다.
+Node.js, Python, Google Chrome이 필요하다. 현재 복제본에는 기존 검증 도구를 로컬 복사해 두었다. GitHub에서 새로 복제한 경우 다음으로 도구를 설치한다. 설치 대상은 검사 도구와, 브라우저 테스트가 쓰는 ffmpeg(`imageio-ffmpeg` 0.6.0)다. 새 PC·랩탑 준비 절차는 [handoff.md](handoff.md) 38절, 작업 규칙은 0절과 `CLAUDE.md`에 있다.
 
 ```powershell
 powershell -File scripts/setup-tests.ps1

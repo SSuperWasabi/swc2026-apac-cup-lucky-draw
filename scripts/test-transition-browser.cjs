@@ -68,7 +68,10 @@ const tmp=path.resolve('.tools');
   const base=path.join(tmp,'transition-base.png');
   // The exact encoded frames of both clips, stacked with the app's own layer classes (blend modes, z-order).
   const frameOf=(clip,n)=>{const out=path.join(tmp,`transition-${clip}-${n}.png`);spawnSync(ff,['-hide_banner','-loglevel','error','-y','-i',`app/assets/oap/transition/transition-${clip}.mp4`,'-vf',`select=eq(n\\,${n})`,'-frames:v','1',out]);return 'data:image/png;base64,'+fs.readFileSync(out).toString('base64');};
-  for(const mode of ['','screen']){
+  // 비교 기준인 AE 원본 프레임은 resource/(Git 제외)에 있다. 새로 받은 저장소에는 없으므로 이 비교만 건너뛴다.
+  const hasSrc=fs.existsSync(SRC);
+  if(!hasSrc)console.log('건너뜀: AE 원본 프레임(%s)이 없어 합성 화질 비교(PSNR)를 생략한다. resource/ 백업이 있는 PC에서 확인한다.',path.relative(process.cwd(),SRC));
+  for(const mode of hasSrc?['','screen']:[]){
    for(const n of [8,30,52]){
     await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:base});
     await page.evaluate(([m,c,mode])=>new Promise(resolve=>{
