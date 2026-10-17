@@ -210,5 +210,13 @@ assert.equal(evaluate('figureProbabilityEnabled()'),false);
 assert.equal(evaluate('figurePercent()'),23.5);
 console.log('PASS: mode toggle, stored percentage retention, reload, legacy defaults, invalid input and save failure rollback without inventory changes');
 console.log('PASS: actual DOM start/select/open/result/home journey, double-draw guard, result-return timer and admin probability/media controls');
+// 당첨 기록: 50건 제한 없이 전체를 최신순으로 보여 준다(v31).
+{const saved=evaluate('JSON.stringify(logArr)');
+evaluate("logArr=Array.from({length:120},(_,i)=>({serial:i+1,timestamp:new Date(Date.UTC(2026,9,17,3,0,i)).toISOString(),ipId:'ip1',ipName:'APAC',grade:'C',prizeName:'상품 '+(i+1),isLastOne:false}));");
+w.renderAdmLog();const rows=[...w.document.querySelectorAll('#pane-log table.adm-tbl tr')].slice(1);
+assert.equal(rows.length,120,'당첨 기록 전체 120건 표시');
+assert.equal(rows[0].cells[0].textContent,'120','가장 최근 기록이 맨 위');assert.equal(rows[119].cells[0].textContent,'1','가장 오래된 기록이 맨 아래');
+assert.ok(!w.document.getElementById('pane-log').textContent.includes('최근 50건'));
+evaluate('logArr='+saved);console.log('PASS: 당첨 기록 화면이 전체 120건을 최신순으로 표시');}
 // Drain boot/media promise callbacks before disposing the document.
 setImmediate(()=>dom.window.close());

@@ -557,7 +557,7 @@
 /* ════════════════ 저장소 키 ════════════════ */
 const K_CFG='swc2026-apac-lucky-draw.config.v1', K_STOCK='swc2026-apac-lucky-draw.stock.v1', K_LOG='swc2026-apac-lucky-draw.log.v1', K_COOL='swc2026-apac-lucky-draw.cooldown.v1';
 const K_STATE='swc2026-apac-lucky-draw.draw-state.v1';
-const APP_VER='swc-apac-v30';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
+const APP_VER='swc-apac-v31';  /* 캐시 갱신 확인용 — sw.js CACHE와 함께 올림 */
 
 /* ════════════════ 기본 설정 (관리자 미설정 시) ════════════════ */
 function defaultConfig(){
@@ -1210,8 +1210,9 @@ function renderAdmLog(){
     <button class="adm-btn pri" onclick="exportCsv()">📄 CSV 내보내기</button>
     <button class="adm-btn dng" style="float:right" onclick="admClearLog()">로그 삭제</button>
     <table class="adm-tbl" style="margin-top:10px"><tr><th>#</th><th>시각</th><th>IP</th><th>등급</th><th>경품</th></tr>`;
-  logArr.slice(-50).reverse().forEach(l=>{ const t=new Date(l.timestamp); html+=`<tr><td>${l.serial||''}</td><td>${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}</td><td>${esc(l.ipName)}</td><td>${esc(l.grade)}${l.isLastOne?' +LO':''}</td><td>${esc(l.prizeName)}</td></tr>`; });
-  html+=`</table><div class="muted-note">최근 50건 표시 · CSV는 전체</div></div>`;
+  // 전체 기록을 최신순으로 표시(v31). 행사 규모(수백~수천 건)는 한 번에 그려도 가볍다.
+  html+=logArr.slice().reverse().map(l=>{ const t=new Date(l.timestamp); return `<tr><td>${l.serial||''}</td><td>${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}</td><td>${esc(l.ipName)}</td><td>${esc(l.grade)}${l.isLastOne?' +LO':''}</td><td>${esc(l.prizeName)}</td></tr>`; }).join('');
+  html+=`</table><div class="muted-note">전체 ${logArr.length}건 · 최신순</div></div>`;
   root.innerHTML=html;
 }
 function exportCsv(){
